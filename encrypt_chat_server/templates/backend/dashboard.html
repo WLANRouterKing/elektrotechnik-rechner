@@ -1,5 +1,9 @@
 {% extends "/backend/base.html" %}
 
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='backend/dashboard.css') }}">
+{% endblock %}
+
 {% block content %}
 
     {% if current_user.is_authenticated %}

@@ -1,19 +1,24 @@
 {% extends "/backend/base.html" %}
 
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='backend/login.css') }}">
+{% endblock %}
+
 {% block content %}
 
     {% if message %}
         <strong>{{ message }}</strong>
     {% endif %}
-    <form method="post" action="">
+    <form id="login-form" method="post" action="{{ url_for("backend.login") }}">
         {{ form.csrf_token }}
         {{ form.username.label }}
         {{ form.username }}
         {{ form.password.label }}
         {{ form.password }}
         {{ form.submit }}
+        {% for message in get_flashed_messages() %}
+            <div class="flash">{{ message }}</div>
+        {% endfor %}
     </form>
-    </body>
-    </html>
 
 {% endblock %}
