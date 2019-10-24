@@ -1,7 +1,7 @@
 {% extends "/backend/base.html" %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ url_for('static', filename='backend/login.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='backend/register.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -9,12 +9,16 @@
 {% if message %}
 <strong>{{ message }}</strong>
 {% endif %}
-<form id="login-form" method="post" action="{{ url_for('backend.login') }}">
+<form id="register-form" method="post" action="{{ url_for('backend.register') }}">
     {{ form.csrf_token }}
     {{ form.username.label }}
     {{ form.username }}
     {{ form.password.label }}
     {{ form.password }}
+    {{ form.password2.label }}
+    {{ form.password2 }}
+    {{ form.email.label }}
+    {{ form.email }}
     {{ form.submit }}
     {% for message in get_flashed_messages() %}
     <div class="flash">{{ message }}</div>

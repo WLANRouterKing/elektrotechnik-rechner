@@ -1,7 +1,5 @@
-import os
-import datetime
 import mysql.connector
-from flask import jsonify
+from flask import jsonify, current_app, flash
 import nacl.utils
 import nacl.secret
 import nacl.encoding
@@ -10,42 +8,12 @@ from nacl import encoding
 from nacl.public import PrivateKey, Box
 
 
-class System:
-
-    def write_file(self, path, content, overwrite):
-        if not overwrite:
-            f = open(path, "a+", encoding='utf-8')
-        else:
-            f = open(path, "wb")
-        f.write(content)
-        f.close()
-
-    def read_file(self, path):
-        f = open(path, "rb")
-        content = f.read()
-        f.close()
-        return content
-
-    def file_exists(self, path):
-        return os.path.isfile(path)
-
-    def log(self, data):
-        message = datetime.datetime.now().strftime("d.m.Y H:i:s")
-        message += " " + data + "\n"
-        self.write_file("debug.log", message, False)
-
-    def log_exception(self, data):
-        message = "Ausnahme: " + format(data)
-        self.log(message)
-
-
 class Database:
     """
     init funktion setzt tabellen namen, system objekt, arrData und initialisiert die datenbankverbindung
     """
 
     def __init__(self):
-        self.system = System()
         self.table_name = ""
         self.arrData = dict()
 
@@ -77,8 +45,12 @@ class Database:
     """
 
     def get_connection(self):
-        return mysql.connector.connect(host="localhost", database="encrypt_chat", user="encrypt_chat",
-                                       password="root")
+        host = current_app.config["DATABASE_HOST"]
+        name = current_app.config["DATABASE_NAME"]
+        user = current_app.config["DATABASE_USER"]
+        password = current_app.config["DATABASE_PASSWORD"]
+        return mysql.connector.connect(host=host, database=name, user=user,
+                                       password=password)
 
     """
     lädt einen datensatz anhand der id oder user_id aus der datenbank
@@ -188,8 +160,8 @@ class Database:
             cursor.close()
             connection.close()
         except Exception as error:
-            return "Ausnahme: ".format(error)
-        return str(success)
+            return False
+        return success
 
     """
     generische speicher methode anhand der id wird überprüft ob der datensatz aus der Datenbank
@@ -228,8 +200,14 @@ class KeyPair(Database):
 
 class Encryption:
 
-    def __init__(self):
-        self.system = System()
+    def create_random_token(self, length):
+        return nacl.utils.random(length)
+
+    def bin_2_hex(self, value):
+        return nacl.encoding.HexEncoder.encode(value)
+
+    def hex_2_bin(self, value):
+        return nacl.encoding.HexEncoder.decode(value)
 
     def create_sym_key(self):
         return nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
@@ -239,7 +217,7 @@ class Encryption:
     """
 
     def get_sym_key(self):
-        return "test"
+        return nacl.encoding.Base64Encoder.decode(current_app.config["SYM_KEY"])
 
     """
     symmetrische verschlüsselungsmethode
@@ -250,7 +228,6 @@ class Encryption:
             box = nacl.secret.SecretBox(self.get_sym_key())
             return nacl.encoding.Base64Encoder.encode(box.encrypt(data))
         except Exception as error:
-            self.system.log_exception(error)
             return False
 
     """
@@ -262,7 +239,6 @@ class Encryption:
             box = nacl.secret.SecretBox(self.get_sym_key())
             return box.decrypt(nacl.encoding.Base64Encoder.decode(data))
         except Exception as error:
-            self.system.log_exception(error)
             return False
 
     """
@@ -271,6 +247,12 @@ class Encryption:
 
     def hash_password(self, password):
         return nacl.pwhash.argon2id.str(password.encode())
+
+    def validate_hash(self, hash, string):
+        if nacl.pwhash.verify(bytes(hash), bytes(string.encode())):
+            return True
+
+        return False
 
     def as_base_64(self, data):
         return nacl.encoding.Base64Encoder.encode(data)
