@@ -58,11 +58,9 @@ class Database:
     """
 
     def load(self):
-        success = False
         connection = self.get_connection()
         cursor = connection.cursor()
         table = self.table_name
-
         try:
             data = self.arrData
             values = list(data.values())
@@ -73,22 +71,17 @@ class Database:
             else:
                 sql = """SELECT * FROM {0}""".format(table)
                 cursor.execute(sql)
-
-            result = []
+            result = dict()
             columns = tuple([str(d[0]) for d in cursor.description])
             for row in cursor:
                 for v in row:
-                    print(v)
                     try:
                         v.decode("utf-8")
                     except:
                         pass
-                result.append(dict(zip(columns, row)))
+                result = dict(zip(columns, row))
             self.arrData = result
             success = True
-        except mysql.connector.Error as error:
-            self.system.log_exception("Loading failed ({0}) for following reason: {1}".format(table, error))
-
         finally:
             if connection.is_connected():
                 cursor.close()
@@ -178,6 +171,21 @@ class Database:
     def get_json_response(self):
         return jsonify(self.arrData)
 
+    def username_exists(self, name):
+        connection = self.get_connection()
+        table = self.table_name
+        sql = """SELECT id FROM {0} WHERE username = %s AND ctrl_active = 1""".format(table)
+        cursor = connection.cursor(prepared=True)
+        cursor.execute(sql, [name])
+        rows = cursor.fetchone()
+        cursor.close()
+        connection.close()
+
+        if rows is not None:
+            print(rows[0])
+            return rows[0]
+        return False
+
 
 class KeyPair(Database):
 
@@ -249,7 +257,7 @@ class Encryption:
         return nacl.pwhash.argon2id.str(password.encode())
 
     def validate_hash(self, hash, string):
-        if nacl.pwhash.verify(bytes(hash), bytes(string.encode())):
+        if nacl.pwhash.verify(bytes(hash), bytes(string, encoding="utf8")):
             return True
 
         return False

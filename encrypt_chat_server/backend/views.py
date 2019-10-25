@@ -1,4 +1,4 @@
-from flask import render_template, request, flash
+from flask import render_template, request, flash, redirect, url_for
 from . import backend
 from .models import BeUser
 from .forms import LoginForm, RegisterForm
@@ -8,7 +8,18 @@ from .forms import LoginForm, RegisterForm
 def login():
     form = LoginForm()
     if request.method == "POST":
-        flash("Login nicht erfolgreich")
+        if form.validate_on_submit():
+            be_user = BeUser()
+            username = request.form["username"]
+            password = request.form["password"]
+            if be_user.validate_login(username, password):
+                return redirect(url_for("backend.dashboard"))
+            else:
+                flash("Login nicht erfolgreich")
+        if form.username.errors:
+            flash(form.username.errors)
+        if form.password.errors:
+            flash(form.password.errors)
     return render_template("/backend/login.html", form=form)
 
 
@@ -39,3 +50,8 @@ def register():
             if form.email.errors:
                 flash(form.email.errors)
     return render_template("/backend/register.html", form=form)
+
+
+@backend.route("/dashboard", methods=["GET", "POST"])
+def dashboard():
+    return "dashboard"
