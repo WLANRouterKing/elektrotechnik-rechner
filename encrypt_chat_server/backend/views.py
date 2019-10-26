@@ -2,6 +2,7 @@ from flask import render_template, request, flash, redirect, url_for
 from . import backend
 from .models import BeUser
 from .forms import LoginForm, RegisterForm
+from flask_login import LoginManager, login_user
 
 
 @backend.route("/login", methods=["GET", "POST"])
@@ -13,6 +14,7 @@ def login():
             username = request.form["username"]
             password = request.form["password"]
             if be_user.validate_login(username, password):
+                login_user(be_user)
                 return redirect(url_for("backend.dashboard"))
             else:
                 flash("Login nicht erfolgreich")

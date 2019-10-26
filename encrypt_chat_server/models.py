@@ -81,13 +81,15 @@ class Database:
                         pass
                 result = dict(zip(columns, row))
             self.arrData = result
-            success = True
+            rows = cursor.rowcount
+            if rows > 0:
+                return True
         finally:
             if connection.is_connected():
                 cursor.close()
                 connection.close()
 
-        return success
+        return False
 
     """
     generische update funktion
@@ -96,46 +98,51 @@ class Database:
     """
 
     def update(self):
-        table = self.table_name
-        id = self.get("id")
-        data = self.arrData
-        for d in data:
-            try:
-                d.decode("utf-8")
-            except:
-                str(d)
-                pass
-        update_string = ""
-        columns = data.keys()
+        try:
+            table = self.table_name
+            id = self.get("id")
+            data = self.arrData
+            for d in data:
+                try:
+                    d.decode("utf-8")
+                except:
+                    pass
+            update_string = ""
+            columns = data.keys()
+            max_keys = len(data.keys())
+            i = 1
+            for column in columns:
+                update_string += column
+                update_string += " = "
+                update_string += " %s"
+                if i < max_keys:
+                    update_string += ", "
+                i += 1
+            data["last_id"] = id
+            values = list(data.values())
+            sql = """UPDATE {0} SET {1} WHERE id = %s """.format(table, update_string)
+            connection = self.get_connection()
+            cursor = connection.cursor(prepared=True)
+            cursor.execute(sql, values)
+            rows = cursor.rowcount
+            if rows > 0:
+                return True
+        except:
+            print("")
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
 
-        max_keys = len(data.keys())
+        return False
 
-        i = 1
-        for column in columns:
-            update_string += column
-            update_string += " = "
-            update_string += " %s"
-            if i < max_keys:
-                update_string += ", "
-            i += 1
-
-        data["last_id"] = id
-        values = list(data.values())
-        sql = """UPDATE {0} SET {1} WHERE id = %s """.format(table, update_string)
-
-        connection = self.get_connection()
-        cursor = connection.cursor(prepared=True)
-        print(sql)
-        print(values)
-        success = cursor.execute(sql, values)
-
-        return str(success)
 
     """
     generische insert methode
     verarbeitet die key,value pairs aus arrData in ein prepared statement mit platzhaltern
     und führt danach die query aus
     """
+
 
     def insert(self):
         try:
@@ -148,13 +155,17 @@ class Database:
             connection = self.get_connection()
             cursor = connection.cursor(prepared=True)
             cursor.execute(sql, values)
-            success = cursor.rowcount
+            rows = cursor.rowcount
             connection.commit()
-            cursor.close()
-            connection.close()
+            if rows > 0:
+                return True
         except Exception as error:
-            return False
-        return success
+            print("")
+        finally:
+            if connection.is_connected:
+                cursor.close()
+                connection.close()
+        return False
 
     """
     generische speicher methode anhand der id wird überprüft ob der datensatz aus der Datenbank
@@ -180,11 +191,11 @@ class Database:
         rows = cursor.fetchone()
         cursor.close()
         connection.close()
-
+        cursor.close()
         if rows is not None:
             print(rows[0])
             return rows[0]
-        return False
+        return 0
 
 
 class KeyPair(Database):
