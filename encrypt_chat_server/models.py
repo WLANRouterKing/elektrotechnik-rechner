@@ -136,13 +136,11 @@ class Database:
 
         return False
 
-
     """
     generische insert methode
     verarbeitet die key,value pairs aus arrData in ein prepared statement mit platzhaltern
     und führt danach die query aus
     """
-
 
     def insert(self):
         try:
@@ -268,8 +266,11 @@ class Encryption:
         return nacl.pwhash.argon2id.str(password.encode())
 
     def validate_hash(self, hash, string):
-        if nacl.pwhash.verify(bytes(hash), bytes(string, encoding="utf8")):
-            return True
+        try:
+            if nacl.pwhash.verify(bytes(hash), bytes(string, encoding="utf8")):
+                return True
+        except:
+            pass
 
         return False
 

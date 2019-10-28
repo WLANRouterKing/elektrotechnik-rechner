@@ -9,16 +9,20 @@
 {% if message %}
 <strong>{{ message }}</strong>
 {% endif %}
-<form id="login-form" method="post" action="{{ url_for('backend.login') }}">
-    {{ form.csrf_token }}
-    {{ form.username.label }}
-    {{ form.username }}
-    {{ form.password.label }}
-    {{ form.password }}
-    {{ form.submit }}
-    {% for message in get_flashed_messages() %}
-    <div class="flash">{{ message }}</div>
-    {% endfor %}
-</form>
+<div id="login-container">
+    <h2>Login</h2>
+    <form id="login-form" method="post" action="{{ url_for('backend.login') }}">
+        {{ form.csrf_token }}
+        {{ form.username.label }}
+        {{ form.username }}
+        {{ form.password.label }}
+        {{ form.password }}
+        {{ form.submit }}
+        {% for message in get_flashed_messages() %}
+        <div class="flash">{{ message }}</div>
+        {% endfor %}
+    </form>
+</div>
+
 
 {% endblock %}
