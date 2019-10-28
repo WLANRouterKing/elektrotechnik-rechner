@@ -1,5 +1,7 @@
 from datetime import datetime
 from flask_login import UserMixin
+from werkzeug.debug.repr import dump
+
 from ..models import Database, Encryption
 
 
@@ -9,19 +11,22 @@ class BeUser(Database):
         super().__init__()
         self.table_name = "be_user"
         self.encryption = Encryption()
+        self.temp_username = ""
+        self.temp_password = ""
         self.name = ""
 
     def load(self):
         super().load()
-        self.name = self.get("username").decode()
+        self.name = self.get("username")
 
     @property
     def is_active(self):
-        return True
+        return bool(self.get("ctrl_active"))
 
     @property
     def is_authenticated(self):
-        return True
+        print(bool(self.get("ctrl_authenticated")))
+        return bool(self.get("ctrl_authenticated"))
 
     @property
     def is_anonymous(self):
@@ -56,16 +61,17 @@ class BeUser(Database):
     def validate_login(self):
         now = datetime.now()
         timestamp_now = datetime.timestamp(now)
-        username = self.get("username")
-        password = self.get("password")
+        username = self.temp_username
+        password = self.temp_password
         id = int(self.username_exists(username))
         if id > 0:
             self.set("id", id)
             self.load()
             stored_password = self.get("password")
-            print(password)
             if self.encryption.validate_hash(stored_password, password):
-                print("valid")
+                self.set("ctrl_authenticated", 1)
+                self.update()
+                self.load()
                 return True
         else:
             failed_logins = self.get("ctrl_failed_logins")
@@ -77,6 +83,6 @@ class BeUser(Database):
                 self.set("ctrl_locked", 1)
                 self.set("ctrl_failed_logins", 0)
                 self.set("ctrl_lockout_time", lockout_time)
-            print(self.arrData)
+                self.set("ctrl_authenticated", False)
             self.save()
         return False

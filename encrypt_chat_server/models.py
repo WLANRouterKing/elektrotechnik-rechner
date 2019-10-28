@@ -61,26 +61,27 @@ class Database:
         connection = self.get_connection()
         cursor = connection.cursor()
         table = self.table_name
+        id = self.get("id")
         try:
-            data = self.arrData
-            values = list(data.values())
-            if int(self.get("id")) > 0:
+            if int(id) > 0:
                 sql = """SELECT * FROM {0} WHERE id = %s""".format(table)
                 cursor = connection.cursor(prepared=True)
-                cursor.execute(sql, values)
+                cursor.execute(sql, [id])
             else:
                 sql = """SELECT * FROM {0}""".format(table)
                 cursor.execute(sql)
             result = dict()
             columns = tuple([str(d[0]) for d in cursor.description])
             for row in cursor:
-                for v in row:
-                    try:
-                        v.decode("utf-8")
-                    except:
-                        pass
                 result = dict(zip(columns, row))
             self.arrData = result
+            for key in self.arrData:
+                try:
+                    if isinstance(self.get(key), bytearray):
+                        self.set(key, self.get(key).decode('utf-8'))
+                except Exception as error:
+                    print(error)
+                    pass
             rows = cursor.rowcount
             if rows > 0:
                 return True
@@ -102,10 +103,12 @@ class Database:
             table = self.table_name
             id = self.get("id")
             data = self.arrData
-            for d in data:
+            for key in data:
                 try:
-                    d.decode("utf-8")
-                except:
+                    if isinstance(data[key], bytearray):
+                        data[key] = data[key].decode('utf-8')
+                except Exception as error:
+                    print(error)
                     pass
             update_string = ""
             columns = data.keys()
@@ -125,10 +128,11 @@ class Database:
             cursor = connection.cursor(prepared=True)
             cursor.execute(sql, values)
             rows = cursor.rowcount
+            connection.commit()
             if rows > 0:
                 return True
-        except:
-            print("")
+        except Exception as error:
+            print(error)
         finally:
             if connection.is_connected():
                 cursor.close()
@@ -191,7 +195,6 @@ class Database:
         connection.close()
         cursor.close()
         if rows is not None:
-            print(rows[0])
             return rows[0]
         return 0
 
@@ -265,11 +268,12 @@ class Encryption:
     def hash_password(self, password):
         return nacl.pwhash.argon2id.str(password.encode())
 
-    def validate_hash(self, hash, string):
+    def validate_hash(self, hash_string, string):
         try:
-            if nacl.pwhash.verify(bytes(hash), bytes(string, encoding="utf8")):
+            if nacl.pwhash.verify(bytes(hash_string, encoding="utf8"), bytes(string, encoding="utf8")):
                 return True
-        except:
+        except Exception as error:
+            print(error)
             pass
 
         return False

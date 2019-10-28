@@ -12,8 +12,8 @@ def login():
     if request.method == "POST":
         if form.validate_on_submit():
             be_user = BeUser()
-            be_user.set("username", request.form["username"])
-            be_user.set("password", request.form["password"])
+            be_user.temp_username = request.form["username"]
+            be_user.temp_password = request.form["password"]
             if be_user.validate_login():
                 login_user(be_user)
                 return redirect(url_for("backend.dashboard"))
@@ -59,7 +59,6 @@ def register():
 @login_required
 def dashboard():
     user = current_user
-    print(user)
     return render_template("/backend/dashboard.html", current_user=user)
 
 
