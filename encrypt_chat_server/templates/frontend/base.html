@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Cryption</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='webfonts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='frontend/main.css') }}">
+    {% block stylesheets %}
+    {% endblock %}
+</head>
+<body>
+<div id="header">
+    <div id="navigation">
+        <ul class="main-navigation">
+            <li class="main-navigation-item">
+                <a href="/" class="main-navigation-link">Home</a>
+            </li>
+            <li class="main-navigation-item">
+                <a href="/ueber-cryption" class="main-navigation-link">Über Cryption</a>
+            </li>
+            <li class="main-navigation-item">
+                <a href="/news" class="main-navigation-link">News</a>
+            </li>
+            <li class="main-navigation-item">
+                <a href="/development" class="main-navigation-link">Development</a>
+            </li>
+        </ul>
+    </div>
+    {% block head %}
+    {% endblock %}
+</div>
+
+<div id="aside">
+    {% block aside %}
+    {% endblock %}
+</div>
+
+<div id="content">
+    {% block content %}
+    {% endblock %}
+</div>
+
+
+{% block footer %}
+<div id="footer">
+
+</div>
+{% endblock %}
+</body>
+</html>

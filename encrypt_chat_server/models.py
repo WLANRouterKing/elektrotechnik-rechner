@@ -275,7 +275,6 @@ class Encryption:
         except Exception as error:
             print(error)
             pass
-
         return False
 
     def as_base_64(self, data):
