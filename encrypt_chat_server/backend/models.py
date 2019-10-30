@@ -25,7 +25,6 @@ class BeUser(Database):
 
     @property
     def is_authenticated(self):
-        print(bool(self.get("ctrl_authenticated")))
         return bool(self.get("ctrl_authenticated"))
 
     @property
