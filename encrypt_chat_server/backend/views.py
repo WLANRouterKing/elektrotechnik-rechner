@@ -58,6 +58,7 @@ def register():
 @backend.route("/dashboard", methods=["GET", "POST"])
 @login_required
 def dashboard():
+    login_manager.reload_user()
     user = current_user
     return render_template("/backend/dashboard.html", current_user=user)
 
