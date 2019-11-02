@@ -2,7 +2,7 @@ from flask import render_template, request, flash, redirect, url_for
 from . import backend
 from .models import BeUser
 from .forms import LoginForm, RegisterForm
-from flask_login import login_user, current_user, login_required
+from flask_login import login_user, current_user, login_required, logout_user
 from encrypt_chat_server import login_manager
 
 
@@ -72,3 +72,15 @@ def load_user(user_id):
         return user
     else:
         return None
+
+
+@backend.route("/logout", methods=["GET"])
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("backend.login"))
+
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    return redirect(url_for("backend.login"))

@@ -8,6 +8,7 @@
 
     {% if current_user.is_authenticated %}
         Hi {{ current_user.name }}!
+        Letzter Login: {{ current_user.last_login }}
     {% endif %}
 
 {% endblock %}
