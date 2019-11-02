@@ -1,4 +1,4 @@
-from encrypt_chat_server import create_app
+from cryption_server import create_app
 
 app = create_app()
 

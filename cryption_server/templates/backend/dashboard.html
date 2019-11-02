@@ -1,0 +1,16 @@
+{% extends "/backend/base.html" %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ url_for('static', filename='backend/dashboard.css') }}">
+{% endblock %}
+
+{% block header %}}
+
+{% block aside %}
+
+{% if current_user.is_authenticated %}
+<span>Hi <strong>{{ current_user.name }}</strong></span>!
+<span>Letzter Login: {{ current_user.last_login }}</span>
+{% endif %}
+
+{% endblock %}

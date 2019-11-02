@@ -3,7 +3,7 @@ from . import backend
 from .models import BeUser
 from .forms import LoginForm, RegisterForm
 from flask_login import login_user, current_user, login_required, logout_user
-from encrypt_chat_server import login_manager
+from cryption_server import login_manager
 
 
 @backend.route("/login", methods=["GET", "POST"])
