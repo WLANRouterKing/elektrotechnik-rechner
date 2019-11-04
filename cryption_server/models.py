@@ -1,11 +1,93 @@
+import os
+from re import search
 import mysql.connector
-from flask import jsonify, current_app, flash
+from flask import jsonify, current_app, flash, url_for
 import nacl.utils
 import nacl.secret
 import nacl.encoding
 import nacl.pwhash
 from nacl import encoding
 from nacl.public import PrivateKey, Box
+from cryption_server import Mail
+from flask_mail import Message
+from cryption_server import my_logger
+
+
+class Encryption:
+
+    def create_random_token(self, length):
+        return nacl.utils.random(length)
+
+    def bin_2_hex(self, value):
+        return nacl.encoding.HexEncoder.encode(value).decode('utf-8')
+
+    def hex_2_bin(self, value):
+        return nacl.encoding.HexEncoder.decode(value)
+
+    def create_sym_key(self):
+        return self.bin_2_hex(self.create_random_token(nacl.secret.SecretBox.KEY_SIZE))
+
+    """
+    liefert den schlüssel zum symmetrischen verschlüsseln
+    """
+
+    def get_sym_key(self):
+        return self.hex_2_bin(current_app.config["SYM_KEY"])
+
+    """
+    symmetrische verschlüsselungsmethode
+    """
+
+    def encrypt(self, data):
+        try:
+            box = nacl.secret.SecretBox(self.get_sym_key())
+            data_encrypted = box.encrypt(bytes(data, encoding="utf-8"), nonce=None, encoder=encoding.Base64Encoder)
+            return data_encrypted.decode('utf-8')
+        except Exception as error:
+            my_logger.log(10, error)
+        return data
+
+    """
+    symmetrische entschlüsselungsmethode
+    """
+
+    def decrypt(self, data):
+        try:
+            box = nacl.secret.SecretBox(self.get_sym_key())
+            data_decrypted = box.decrypt(bytes(data, encoding="utf-8"), nonce=None, encoder=encoding.Base64Encoder)
+            return data_decrypted.decode('utf-8')
+        except Exception as error:
+            my_logger.log(10, error)
+        return data
+
+    """
+    liefert einen password hash zurück (argon2id)
+    """
+
+    def hash_password(self, password):
+        return nacl.pwhash.argon2id.str(password.encode())
+
+    def validate_hash(self, hash_string, string):
+        try:
+            if nacl.pwhash.verify(bytes(hash_string, encoding="utf8"), bytes(string, encoding="utf8")):
+                return True
+        except Exception as error:
+            my_logger.log(10, error)
+            pass
+        return False
+
+    def as_base_64(self, data):
+        return nacl.encoding.Base64Encoder.encode(data)
+
+    def get_key_pair(self):
+        secret_key = PrivateKey.generate()
+        public_key = secret_key.public_key
+        public_key_encrypted = self.encrypt(public_key.encode(encoder=encoding.RawEncoder))
+        private_key_encrypted = self.encrypt(secret_key.encode(encoder=encoding.RawEncoder))
+        key_pair = KeyPair()
+        key_pair.set_private_key(private_key_encrypted)
+        key_pair.set_public_key(public_key_encrypted)
+        return key_pair
 
 
 class Database:
@@ -14,8 +96,10 @@ class Database:
     """
 
     def __init__(self):
+        self.encryption = Encryption()
         self.table_name = ""
         self.arrData = dict()
+        self.exclude_from_encryption = ["id", "username", "user_id", "ctrl"]
 
     """
     generische get funktion -> muss zur sicherheit noch ergänzt werden
@@ -25,7 +109,7 @@ class Database:
         if key in self.arrData:
             return self.arrData[key]
         else:
-            return 0
+            return ""
 
     """
     generische set funktion -> muss zur sicherheit noch ergänzt werden
@@ -35,10 +119,16 @@ class Database:
         self.arrData[key] = value
 
     def get_id(self):
-        return self.get("id")
+        id = self.get("id")
+        if id == "":
+            id = 0
+        return int(id)
 
     def get_user_id(self):
-        return self.get("user_id")
+        user_id = self.get("user_id")
+        if user_id == "":
+            user_id = 0
+        return int(user_id)
 
     """
     gibt ein MySQLConnection Objekt zurück
@@ -61,10 +151,15 @@ class Database:
         connection = self.get_connection()
         cursor = connection.cursor()
         table = self.table_name
-        id = self.get("id")
+        id = 0
+        if self.get_id() > 0:
+            id = self.get_id()
+            sql = """SELECT * FROM {0} WHERE id = %s""".format(table)
+        elif self.get_user_id() > 0:
+            id = self.get_user_id()
+            sql = """SELECT * FROM {0} WHERE user_id = %s""".format(table)
         try:
-            if int(id) > 0:
-                sql = """SELECT * FROM {0} WHERE id = %s""".format(table)
+            if id > 0:
                 cursor = connection.cursor(prepared=True)
                 cursor.execute(sql, [id])
             else:
@@ -80,8 +175,9 @@ class Database:
                     if isinstance(self.get(key), bytearray):
                         self.set(key, self.get(key).decode('utf-8'))
                 except Exception as error:
-                    print(error)
+                    my_logger.log(10, error)
                     pass
+            self.decrypt_data()
             rows = cursor.rowcount
             if rows > 0:
                 return True
@@ -99,16 +195,18 @@ class Database:
     """
 
     def update(self):
+        connection = self.get_connection()
+        cursor = connection.cursor(prepared=True)
         try:
             table = self.table_name
             id = self.get("id")
-            data = self.arrData
+            data = self.encrypt_data()
             for key in data:
                 try:
                     if isinstance(data[key], bytearray):
                         data[key] = data[key].decode('utf-8')
                 except Exception as error:
-                    print(error)
+                    my_logger.log(10, error)
                     pass
             update_string = ""
             columns = data.keys()
@@ -124,15 +222,13 @@ class Database:
             data["last_id"] = id
             values = list(data.values())
             sql = """UPDATE {0} SET {1} WHERE id = %s """.format(table, update_string)
-            connection = self.get_connection()
-            cursor = connection.cursor(prepared=True)
             cursor.execute(sql, values)
             rows = cursor.rowcount
             connection.commit()
             if rows > 0:
                 return True
         except Exception as error:
-            print(error)
+            my_logger.log(10, error)
         finally:
             if connection.is_connected():
                 cursor.close()
@@ -147,27 +243,70 @@ class Database:
     """
 
     def insert(self):
+        connection = self.get_connection()
+        cursor = connection.cursor(prepared=True)
         try:
             table = self.table_name
-            data = self.arrData
+            data = self.encrypt_data()
             columns = ','.join(data.keys())
             placeholders = ','.join(['%s'] * len(data))
             values = list(data.values())
             sql = """INSERT INTO {0} ({1}) VALUES ({2});""".format(table, columns, placeholders)
-            connection = self.get_connection()
-            cursor = connection.cursor(prepared=True)
             cursor.execute(sql, values)
-            rows = cursor.rowcount
+            row = cursor.lastrowid
             connection.commit()
-            if rows > 0:
-                return True
+            if row > 0:
+                return row
         except Exception as error:
-            print("")
+            my_logger.log(10, error)
         finally:
             if connection.is_connected:
                 cursor.close()
                 connection.close()
         return False
+
+    def list(self):
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        self.list = list()
+        try:
+            table = self.table_name
+            sql = """SELECT * FROM {0} """.format(table)
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+            for row in rows:
+                if row[0]:
+                    self.list.append(row[0])
+        except Exception as error:
+            my_logger.log(10, error)
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
+        return self.list
+
+    def encrypt_data(self):
+        data = dict()
+        for key in self.arrData:
+            value = self.arrData[key]
+            key_encryptable = True
+            for exclude in self.exclude_from_encryption:
+                if search(exclude, key) is not None:
+                    key_encryptable = False
+            if key_encryptable:
+                data[key] = self.encryption.encrypt(value)
+            else:
+                data[key] = value
+        return data
+
+    def decrypt_data(self):
+        for key in self.arrData:
+            key_decryptable = True
+            for exclude in self.exclude_from_encryption:
+                if search(exclude, key) is not None:
+                    key_decryptable = False
+            if key_decryptable:
+                self.set(key, self.encryption.decrypt(self.get(key)))
 
     """
     generische speicher methode anhand der id wird überprüft ob der datensatz aus der Datenbank
@@ -176,7 +315,7 @@ class Database:
     """
 
     def save(self):
-        if self.get("id") > 0:
+        if self.get_id() > 0:
             return self.update()
         else:
             return self.insert()
@@ -184,19 +323,159 @@ class Database:
     def get_json_response(self):
         return jsonify(self.arrData)
 
+    def create_instance_by_id(self, id):
+        if id <= 0:
+            return False
+        self.set("id", id)
+        self.load()
+        return True
+
+    def create_instance_by(self, key="username"):
+        connection = self.get_connection()
+        cursor = connection.cursor(prepared=True)
+        rows = None
+        try:
+            value = self.get(key)
+            if value == "":
+                return False
+            table = self.table_name
+            sql = """SELECT id FROM {0} WHERE {1} = %s""".format(table, key)
+            cursor.execute(sql, [value])
+            rows = cursor.fetchone()
+        except Exception as error:
+            my_logger.log(10, error)
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
+        if rows is not None:
+            id = rows[0]
+            if id > 0:
+                self.set("id", id)
+                self.load()
+                return True
+        return False
+
     def username_exists(self, name):
         connection = self.get_connection()
-        table = self.table_name
-        sql = """SELECT id FROM {0} WHERE username = %s AND ctrl_active = 1""".format(table)
         cursor = connection.cursor(prepared=True)
-        cursor.execute(sql, [name])
-        rows = cursor.fetchone()
-        cursor.close()
-        connection.close()
-        cursor.close()
+        rows = None
+        try:
+            table = self.table_name
+            sql = """SELECT id FROM {0} WHERE username = %s AND ctrl_active = 1""".format(table)
+            cursor.execute(sql, [name])
+            rows = cursor.fetchone()
+        except Exception as error:
+            my_logger.log(10, error)
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
         if rows is not None:
             return rows[0]
         return 0
+
+
+class SystemMail(Database):
+
+    def __init__(self):
+        super().__init__()
+        self.table_name = "system_mail"
+        self.set_sender(current_app.config["MAIL_DEFAULT_SENDER"])
+
+    def add_line(self, line):
+        current_message = self.get_message()
+        if current_message is not None:
+            new_message = current_message + line
+        else:
+            new_message = line
+        self.set_message(new_message)
+
+    def get_subject(self):
+        return self.get("subject")
+
+    def get_receiver(self):
+        return self.get("receiver")
+
+    def get_sender(self):
+        return self.get("sender")
+
+    def get_message(self):
+        return self.get("message")
+
+    def get_time(self):
+        return self.get("time")
+
+    def set_sender(self, value):
+        self.set("sender", value)
+
+    def set_receiver(self, value):
+        self.set("receiver", value)
+
+    def set_message(self, value):
+        self.set("message", value)
+
+    def set_time(self, value):
+        self.set("time", value)
+
+    def set_subject(self, value):
+        self.set("subject", value)
+
+    def send_be_user_activation_mail(self, beUser):
+        host_protocol = current_app.config["HOST_PROTOCOL"]
+        username = beUser.get("username")
+        email = beUser.get("email")
+        activation_token = beUser.get("activation_token")
+        link = current_app.config["HOST"] + ":" + str(current_app.config["HOST_PORT"]) + \
+               url_for("backend.user_activate",
+                       user_id=beUser.get_id(),
+                       activation_token=activation_token)
+        self.set_subject("Du wurdest hinzugefügt")
+        self.add_line("""<h2>Hallo {0}</h2></br></br>""".format(username))
+        self.add_line("""<p>Du wurdest zum Cryption Backend hinzugefügt<p></br>""")
+        self.add_line(
+            """<p>Bitte aktiviere deinen Account über folgenden Link: <a href="{0}{1}">Account aktivieren</a><p></br>""".format(
+                host_protocol, link))
+        self.set_receiver(email)
+        self.send_message()
+
+    def send_be_user_login_message(self, beUser):
+        username = beUser.get("username")
+        email = beUser.get("email")
+        ip_address = beUser.get("ip_address")
+        self.set_subject("Neuer Login")
+        self.add_line("""<h2>Hallo {0}</h2></br></br>""".format(username))
+        self.add_line("""<p>Es wurde ein neuer Login bei deinem Account festgestellt<p></br>""")
+        self.add_line("""<p>IP Adresse: {0}<p></br>""".format(ip_address))
+        self.add_line(
+            """<p>Falls du das nicht warst empfehlen wir dir sofort das Passwort zu ändern!</p>""")
+        self.set_receiver(email)
+        self.send_message()
+
+    def send_be_user_lockout_message(self, beUser):
+        username = beUser.get("username")
+        email = beUser.get("email")
+        ip_address = beUser.get("ip_address")
+        self.set_subject("Dein Zugang wurde gesperrt")
+        self.add_line("""<h2>Hallo {0}</h2></br></br>""".format(username))
+        self.add_line(
+            """<p>Dein Zugang wurde aufgrund von zu vielen falschen Login Versuchen gesperrt<p></br>""")
+        self.add_line("""<p>letzte IP Adresse: {0}<p></br>""".format(ip_address))
+        self.set_receiver(email)
+        self.send_message()
+
+    def send_message(self):
+        try:
+            mail = Mail()
+            mail.connect()
+            message = Message(self.get_subject(), recipients=[self.get_receiver()])
+            message.html = self.get_message()
+            mail.send(message)
+            self.save()
+        except Exception as error:
+            my_logger.log(10, error)
+
+        return False
 
 
 class KeyPair(Database):
@@ -216,76 +495,3 @@ class KeyPair(Database):
 
     def set_public_key(self, value):
         self.set("public_key", value)
-
-
-class Encryption:
-
-    def create_random_token(self, length):
-        return nacl.utils.random(length)
-
-    def bin_2_hex(self, value):
-        return nacl.encoding.HexEncoder.encode(value)
-
-    def hex_2_bin(self, value):
-        return nacl.encoding.HexEncoder.decode(value)
-
-    def create_sym_key(self):
-        return nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
-
-    """
-    liefert den schlüssel zum symmetrischen verschlüsseln
-    """
-
-    def get_sym_key(self):
-        return nacl.encoding.Base64Encoder.decode(current_app.config["SYM_KEY"])
-
-    """
-    symmetrische verschlüsselungsmethode
-    """
-
-    def encrypt(self, data):
-        try:
-            box = nacl.secret.SecretBox(self.get_sym_key())
-            return nacl.encoding.Base64Encoder.encode(box.encrypt(data))
-        except Exception as error:
-            return False
-
-    """
-    symmetrische entschlüsselungsmethode
-    """
-
-    def decrypt(self, data):
-        try:
-            box = nacl.secret.SecretBox(self.get_sym_key())
-            return box.decrypt(nacl.encoding.Base64Encoder.decode(data))
-        except Exception as error:
-            return False
-
-    """
-    liefert einen password hash zurück (argon2id)
-    """
-
-    def hash_password(self, password):
-        return nacl.pwhash.argon2id.str(password.encode())
-
-    def validate_hash(self, hash_string, string):
-        try:
-            if nacl.pwhash.verify(bytes(hash_string, encoding="utf8"), bytes(string, encoding="utf8")):
-                return True
-        except Exception as error:
-            print(error)
-            pass
-        return False
-
-    def as_base_64(self, data):
-        return nacl.encoding.Base64Encoder.encode(data)
-
-    def get_key_pair(self):
-        secret_key = PrivateKey.generate()
-        public_key = secret_key.public_key
-        public_key_encrypted = self.encrypt(public_key.encode(encoder=encoding.RawEncoder))
-        private_key_encrypted = self.encrypt(secret_key.encode(encoder=encoding.RawEncoder))
-        key_pair = KeyPair()
-        key_pair.set_private_key(private_key_encrypted)
-        key_pair.set_public_key(public_key_encrypted)
-        return key_pair

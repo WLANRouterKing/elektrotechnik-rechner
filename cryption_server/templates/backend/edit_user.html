@@ -1,0 +1,74 @@
+{% extends "backend/dashboard.html" %}
+
+{% block be_users_edit %}
+    {% if user %}
+        <div class="col-lg-4">
+        <form id="edit-user-form" method="post" action="{{ url_for('backend.be_user_edit',user_id=user.get_id()) }}">
+            {{ form.csrf_token }}
+
+            <div class="form-group">
+                {{ form.username.label }}
+                {{ form.username(class_="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.password.label }}
+                {{ form.password(class_="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.password2.label }}
+                {{ form.password2(class_="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.email.label }}
+                {{ form.email(class_="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.ctrl_access_level.label }}
+                {{ form.ctrl_access_level(class_="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.ctrl_last_login.label }}
+                {{ form.ctrl_last_login(class_="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.ctrl_active.label }}
+                {{ form.ctrl_active(class_="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.activation_token.label }}
+                {{ form.activation_token(class_="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.ctrl_failed_logins.label }}
+                {{ form.ctrl_failed_logins(class_="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.ctrl_locked.label }}
+                {{ form.ctrl_locked(class_="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.ctrl_lockout_time.label }}
+                {{ form.ctrl_lockout_time(class_="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.ctrl_authenticated.label }}
+                {{ form.ctrl_authenticated(class_="form-control") }}
+            </div>
+            <div class="form-group">
+                {{ form.user_password.label }}
+                {{ form.user_password(class_="form-control") }}
+            </div>
+            {{ form.submit(class_="btn btn-dark") }}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </form>
+    {% endif %}
+</div>
+
+    <a class="btn btn-dark link-back" href="{{ url_for('backend.be_user') }}">Zurück zur Übersicht</a>
+{% endblock %}

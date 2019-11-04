@@ -1,6 +1,14 @@
 from datetime import datetime
 from flask import flash
-from ..models import Database, Encryption
+from ..models import Database, SystemMail
+
+
+class FailedLoginRecord(Database):
+
+    def __init__(self):
+        super().__init__()
+        self.table_name = "failed_login_record"
+        self.exclude_from_encryption.pop(1)
 
 
 class BeUser(Database):
@@ -8,20 +16,29 @@ class BeUser(Database):
     def __init__(self):
         super().__init__()
         self.table_name = "be_user"
-        self.encryption = Encryption()
-        self.temp_username = ""
         self.temp_password = ""
-        self.name = ""
-        self.last_login = ""
+        self.ip_address = ""
+        self.exists = False
 
-    def load(self):
-        super().load()
-        self.name = self.get("username")
-        last_login = self.get("ctrl_last_login")
-        self.last_login = last_login.strftime("%d.%m.%Y %H:%M")
-
+    @property
     def is_locked(self):
         return bool(self.get("ctrl_locked"))
+
+    @property
+    def is_admin(self):
+        return int(self.get("ctrl_access_level")) == 10
+
+    @property
+    def is_moderator(self):
+        return int(self.get("ctrl_access_level")) == 5
+
+    @property
+    def is_user(self):
+        return int(self.get("ctrl_access_level")) == 1
+
+    @property
+    def has_activation_token(self):
+        return bool(self.get("activation_token"))
 
     @property
     def is_active(self):
@@ -37,21 +54,25 @@ class BeUser(Database):
 
     def get_id(self):
         try:
-            return self.get("id")
+            return super().get_id()
         except AttributeError:
             raise NotImplementedError('No `id` attribute - override `get_id`')
 
-    def send_activation_mail(self):
-        return ""
-
-    def send_lockout_mail(self):
-        return ""
-
     def generate_activation_token(self):
-        return self.encryption.bin_2_hex(self.encryption.create_random_token(32)).decode()
+        return self.encryption.bin_2_hex(self.encryption.create_random_token(32))
 
     def hash_password(self, password):
         return self.encryption.hash_password(password)
+
+    def list(self):
+        list_id = super().list()
+        final_list = list()
+        for id in list_id:
+            be_user = BeUser()
+            be_user.set("id", id)
+            be_user.load()
+            final_list.append(be_user)
+        return final_list
 
     """
     login validieren
@@ -62,43 +83,53 @@ class BeUser(Database):
     """
 
     def validate_login(self):
+        system_mail = SystemMail()
         datetime_now = datetime.now()
-        username = self.temp_username
         password = self.temp_password
-        id = int(self.username_exists(username))
-        if id > 0:
-            self.set("id", id)
-            self.load()
-        if self.is_locked():
+        if self.create_instance_by("username"):
+            self.exists = True
+        if self.is_locked:
             lockout_time = self.get("ctrl_lockout_time")
             difference = lockout_time.timestamp() - datetime_now.timestamp()
-            print(difference)
             if difference > 0:
-                flash("Ihr Account ist gesperrt")
+                flash("Ihr Account ist gesperrt", 'danger')
                 return False
             else:
                 self.set("ctrl_locked", 0)
                 self.set("ctrl_lockout_time", None)
                 self.set("ctrl_failed_logins", 0)
-        if id > 0:
+        if self.exists:
             stored_password = self.get("password")
             if self.encryption.validate_hash(stored_password, password):
                 self.set("ctrl_last_login", datetime_now)
                 self.set("ctrl_authenticated", 1)
-                self.update()
-                self.load()
+                self.set("ip_address", self.ip_address)
+                self.save()
+                system_mail.send_be_user_login_message(self)
                 return True
-        failed_logins = self.get("ctrl_failed_logins")
-        failed_logins = failed_logins + 1
-        self.set("ctrl_failed_logins", failed_logins)
-        if failed_logins >= 3:
-            # lockout time beträgt 1 stunde
-            time = datetime_now.timestamp()
-            timestamp = time + 3600
-            date = datetime.fromtimestamp(timestamp)
-            self.set("ctrl_locked", 1)
-            self.set("ctrl_failed_logins", 0)
-            self.set("ctrl_lockout_time", date)
-            self.set("ctrl_authenticated", False)
-        self.save()
+            else:
+                failed_logins = int(self.get("ctrl_failed_logins"))
+                failed_logins = failed_logins + 1
+                self.set("ctrl_failed_logins", failed_logins)
+                if failed_logins >= 3:
+                    # lockout time beträgt 1 stunde
+                    time = datetime_now.timestamp()
+                    timestamp = time + 3600
+                    date = datetime.fromtimestamp(timestamp)
+                    self.set("ctrl_locked", 1)
+                    self.set("ctrl_failed_logins", 0)
+                    self.set("ctrl_lockout_time", date)
+                    self.set("ctrl_authenticated", False)
+                    system_mail.send_be_user_lockout_message(self)
+                self.save()
+        flash("Login nicht erfolgreich", 'danger')
+        return False
+
+    def register(self):
+        system_mail = SystemMail()
+        user_id = int(self.save())
+        if user_id > 0:
+            self.set("id", user_id)
+            system_mail.send_be_user_activation_mail(self)
+            return True
         return False

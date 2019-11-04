@@ -1,16 +1,26 @@
 {% extends "/backend/base.html" %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ url_for('static', filename='backend/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='backend/css/dashboard.css') }}">
 {% endblock %}
 
-{% block header %}}
+{% block status_bar %}
 
-{% block aside %}
+    {% if current_user %}
+        {% if current_user.is_authenticated %}
+            <span>Hi {{ current_user.get('username') }}!</span>
+            <span>Letzter Login: {{ current_user.get("ctrl_last_login") }}</span>
+        {% endif %}
+    {% endif %}
+{% endblock %}
 
-{% if current_user.is_authenticated %}
-<span>Hi <strong>{{ current_user.name }}</strong></span>!
-<span>Letzter Login: {{ current_user.last_login }}</span>
-{% endif %}
-
+{% block content %}
+    <div class="container-fluid">
+        {% block be_users %}
+        {% endblock %}
+        {% block be_users_add %}
+        {% endblock %}
+        {% block be_users_edit %}
+        {% endblock %}
+    </div>
 {% endblock %}
