@@ -1,5 +1,6 @@
 from flask import render_template, request, flash, redirect, url_for, escape, abort
 from validate_email import validate_email
+from cryption_server.models import SystemMail
 from . import backend
 from .models import BeUser, FailedLoginRecord
 from .forms import LoginForm, AddUserForm, EditUserForm, EditAccountForm
@@ -145,7 +146,6 @@ def be_user_edit(user_id):
                 else:
                     flash("Sie haben ein falsches Passwort eingegeben", 'danger')
             else:
-                flash("Form konnte nicht validiert werden", 'danger')
                 form.get_error_messages()
         return render_template("backend/edit_user.html", form=form, user=user)
     else:
@@ -161,8 +161,7 @@ benutzer hinzufügen
 @login_required
 def be_user_add():
     form = AddUserForm(request.form)
-    user = current_user
-    if user.is_admin:
+    if current_user.is_admin:
         if request.method == "POST" and form.validate_on_submit():
             be_user = BeUser()
             username = escape(request.form["username"])
@@ -189,8 +188,68 @@ def be_user_add():
         if form.email.errors:
             flash(form.email.errors, 'danger')
         return render_template("backend/add_user.html", form=form)
-    else:
-        flash("Du hast nicht die benötigten Rechte", 'danger')
+    flash("Du hast nicht die benötigten Rechte", 'danger')
+    return redirect(url_for("backend.dashboard"))
+
+
+"""
+fehlgeschlagene login versuche
+"""
+
+
+@backend.route("/failed_login_records", methods=["GET"])
+@login_required
+def failed_login_records():
+    if current_user.is_moderator or current_user.is_admin:
+        failed_login_record = FailedLoginRecord()
+        failed_login_records = failed_login_record.object_list(failed_login_record)
+        return render_template("/backend/failed_login_records.html", failed_login_records=failed_login_records)
+    flash("Du hast nicht die benötigten Rechte", "danger")
+    return redirect(url_for("backend.dashboard"))
+
+
+"""
+fehlgeschlagene login versuche löschen
+"""
+
+
+@backend.route("/failed_login_records/delete/<int:id>", methods=["GET"])
+@login_required
+def failed_login_records_delete(id):
+    if current_user.is_admin:
+        failed_login_record = FailedLoginRecord()
+        failed_login_record.set("id", id)
+        failed_login_record.delete()
+    return redirect(url_for("backend.failed_login_records"))
+
+
+"""
+meldungen über benutzer
+"""
+
+
+@backend.route("/reports", methods=["GET"])
+@login_required
+def reports():
+    if current_user.is_moderator or current_user.is_admin:
+        return render_template("/backend/dashboard.html")
+    flash("Du hast nicht die benötigten Rechte", "danger")
+    return redirect(url_for("backend.dashboard"))
+
+
+"""
+versendete nachrichten des systems
+"""
+
+
+@backend.route("/system_mails", methods=["GET"])
+@login_required
+def system_mails():
+    if current_user.is_moderator or current_user.is_admin:
+        system_mail = SystemMail()
+        system_mails = system_mail.object_list(system_mail)
+        return render_template("/backend/system_mails.html", system_mails=system_mails)
+    flash("Du hast nicht die benötigten Rechte", "danger")
     return redirect(url_for("backend.dashboard"))
 
 
@@ -202,8 +261,7 @@ dashboard ansicht
 @backend.route("/dashboard", methods=["GET"])
 @login_required
 def dashboard():
-    user = current_user
-    return render_template("/backend/dashboard.html", current_user=user)
+    return render_template("/backend/dashboard.html")
 
 
 """
@@ -227,24 +285,21 @@ def load_user(user_id):
 @backend.route("/be_user", methods=["GET"])
 @login_required
 def be_user():
-    user = current_user
     be_user = BeUser()
-    be_users = be_user.list()
-    return render_template("/backend/be_user.html", current_user=user, users=be_users)
+    be_users = be_user.object_list(be_user)
+    return render_template("/backend/be_user.html", users=be_users)
 
 
 @backend.route("/user", methods=["GET"])
 @login_required
 def user():
-    user = current_user
-    return render_template("/backend/dashboard.html", current_user=user)
+    return render_template("/backend/dashboard.html")
 
 
 @backend.route("/user/add_user", methods=["GET", "POST"])
 @login_required
 def user_add():
-    user = current_user
-    return render_template("/backend/dashboard.html", current_user=user)
+    return render_template("/backend/dashboard.html")
 
 
 @backend.route("/user/activate/<int:user_id>/<string:activation_token>", methods=["GET"])
@@ -269,7 +324,8 @@ def user_activate(user_id, activation_token):
             be_user.save()
             flash("Dein Account wurde erfolgreich aktiviert", "success")
             return redirect(url_for("backend.login"))
-    return "Aktivierung fehlgeschlagen"
+    flash("Aktivierung fehlgeschlagen", 'danger')
+    return redirect(url_for("backend.login"))
 
 
 @backend.route("/logout", methods=["GET"])

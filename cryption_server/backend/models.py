@@ -1,6 +1,4 @@
 from datetime import datetime
-from re import search
-
 from flask import flash, escape
 from ..models import Database, SystemMail
 
@@ -9,6 +7,7 @@ class FailedLoginRecord(Database):
 
     def __init__(self):
         super().__init__()
+        self.class_label = "Fehlgeschlagener Loginversuch"
         self.table_name = "failed_login_record"
         self.exclude_from_encryption.pop(1)
 
@@ -108,16 +107,6 @@ class BeUser(Database):
 
     def hash_password(self, password):
         return self.encryption.hash_password(password)
-
-    def list(self):
-        list_id = super().list()
-        final_list = list()
-        for id in list_id:
-            be_user = BeUser()
-            be_user.set("id", id)
-            be_user.load()
-            final_list.append(be_user)
-        return final_list
 
     """
     login validieren

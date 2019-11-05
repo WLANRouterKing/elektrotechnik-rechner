@@ -2,38 +2,40 @@
 
 {% block be_users_add %}
     <div class="col-lg-4">
-        <form id="register-form" method="post" action="{{ url_for('backend.be_user_add') }}">
-            {{ form.csrf_token }}
-            <div class="form-group">
-                {{ form.username.label }}
-                {{ form.username(class_="form-control") }}
-            </div>
-            <div class="form-row">
-                <div class="form-group col-md-6">
-                    {{ form.password.label }}
-                    {{ form.password(class_="form-control") }}
+        {% if form %}
+            <form id="register-form" method="post" action="{{ url_for('backend.be_user_add') }}">
+                {{ form.csrf_token }}
+                <div class="form-group">
+                    {{ form.username.label }}
+                    {{ form.username(class_="form-control") }}
                 </div>
-                <div class="form-group col-md-6">
-                    {{ form.password2.label }}
-                    {{ form.password2(class_="form-control") }}
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        {{ form.password.label }}
+                        {{ form.password(class_="form-control") }}
+                    </div>
+                    <div class="form-group col-md-6">
+                        {{ form.password2.label }}
+                        {{ form.password2(class_="form-control") }}
+                    </div>
                 </div>
-            </div>
-            <div class="form-group">
-                {{ form.email.label }}
-                {{ form.email(class_="form-control") }}
-            </div>
-            <div class="form-group">
-                {{ form.ctrl_access_level.label }}
-                {{ form.ctrl_access_level(class_="form-control") }}
-            </div>
-            {{ form.submit(class_="btn btn-dark") }}
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        </form>
+                <div class="form-group">
+                    {{ form.email.label }}
+                    {{ form.email(class_="form-control") }}
+                </div>
+                <div class="form-group">
+                    {{ form.ctrl_access_level.label }}
+                    {{ form.ctrl_access_level(class_="form-control") }}
+                </div>
+                {{ form.submit(class_="btn btn-dark") }}
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </form>
+        {% endif %}
     </div>
 {% endblock %}

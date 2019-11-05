@@ -1,13 +1,14 @@
-import os
 from re import search
 import mysql.connector
-from flask import jsonify, current_app, flash, url_for, escape
+import copy
+from flask import jsonify, current_app, url_for, flash
 import nacl.utils
 import nacl.secret
 import nacl.encoding
 import nacl.pwhash
+from flask_login import current_user
 from nacl import encoding
-from nacl.public import PrivateKey, Box
+from nacl.public import PrivateKey
 from cryption_server import Mail
 from flask_mail import Message
 from cryption_server import my_logger
@@ -99,8 +100,10 @@ class Database:
 
     def __init__(self):
         self.encryption = Encryption()
+        self.class_label = ""
         self.table_name = ""
         self.arrData = dict()
+        self.put_into_trash = True
         self.exclude_from_encryption = ["id", "username", "user_id", "ctrl"]
         self.column_admin_rights = ["ctrl_access_level"]
         self.filter_from_form_prepare = ["password", "csrf_token", "user_password", "submit"]
@@ -272,14 +275,60 @@ class Database:
                 connection.close()
         return False
 
-    def list(self):
+    def delete(self):
+        connection = self.get_connection()
+        cursor = connection.cursor(prepared=True)
+        success = False
+        table = self.table_name
+        id = self.get_id()
+        if id > 0:
+            try:
+                if self.put_into_trash:
+                    sql = """UPDATE {0} SET ctrl_deleted = 1 WHERE id = %s;""".format(table)
+                    trash = Trash()
+                    trash.set("item_id", id)
+                    trash.set("item_table", table)
+                    trash.set("user_id", current_user.get_id())
+                    if trash.save():
+                        flash("""{0} mit der ID {1} erfolgreich in den Papierkorb verschoben""".format(self.class_label, id), "success")
+                    else:
+                        flash("""{0} mit der ID {1} konnte nicht in den Papierkorb verschoben werden""".format(self.class_label, id), "danger")
+                else:
+                    sql = """DELETE FROM {0} WHERE id = %s;""".format(table)
+                cursor.execute(sql, [id])
+                connection.commit()
+                row = cursor.lastrowid
+
+                if row > 0 and not self.put_into_trash:
+                    flash("""{0} mit der ID {1} erfolgreich gelöscht""".format(self.class_label, id), "success")
+                elif row <= 0 and not self.put_into_trash:
+                    flash("""{0} mit der ID {1} konnte nicht gelöscht werden""".format(self.class_label, id), "danger")
+                if row > 0:
+                    success = True
+            except Exception as error:
+                my_logger.log(10, error)
+            finally:
+                if connection.is_connected():
+                    cursor.close()
+                    connection.close()
+        return success
+
+    def id_list(self, sql_where):
         connection = self.get_connection()
         cursor = connection.cursor()
         self.list = list()
         try:
             table = self.table_name
-            sql = """SELECT * FROM {0} """.format(table)
-            cursor.execute(sql)
+            if len(sql_where) > 0:
+                sql = """SELECT id FROM {0} WHERE %s""".format(table)
+                if self.put_into_trash:
+                    sql += " AND ctrl_deleted = 0 "
+                cursor.execute(sql, [sql_where])
+            else:
+                sql = """SELECT id FROM {0} """.format(table)
+                if self.put_into_trash:
+                    sql += " WHERE ctrl_deleted = 0 "
+                cursor.execute(sql)
             rows = cursor.fetchall()
             for row in rows:
                 if row[0]:
@@ -291,6 +340,17 @@ class Database:
                 cursor.close()
                 connection.close()
         return self.list
+
+    def object_list(self, object=None, sql_where=""):
+        list_id = self.id_list(sql_where)
+        final_list = list()
+        for id in list_id:
+            # objekt kopieren
+            single_object = copy.copy(object)
+            single_object.set("id", id)
+            single_object.load()
+            final_list.append(single_object)
+        return final_list
 
     def encrypt_data(self):
         data = dict()
@@ -495,3 +555,53 @@ class KeyPair(Database):
 
     def set_public_key(self, value):
         self.set("public_key", value)
+
+
+class Trash(Database):
+
+    def __init__(self):
+        super().__init__()
+        self.table_name = "trash"
+        self.put_into_trash = False
+
+    def recover(self):
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        row = 0
+        try:
+            item_id = self.get("item_id")
+            item_table = self.get("item_table")
+            sql = """UPDATE {0} SET ctrl_deleted = 0 WHERE id = %s""".format(item_table)
+            cursor.execute(sql, item_id)
+            connection.commit()
+            row = cursor.lastrowid
+        except Exception as error:
+            my_logger.log(10, error)
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
+        if row > 0:
+            return self.delete()
+        return False
+
+    def delete_final(self):
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        row = 0
+        try:
+            item_id = self.get("item_id")
+            item_table = self.get("item_table")
+            sql = """DELETE FROM {0} WHERE id = %s""".format(item_table)
+            cursor.execute(sql, item_id)
+            connection.commit()
+            row = cursor.lastrowid
+        except Exception as error:
+            my_logger.log(10, error)
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
+        if row > 0:
+            return self.delete()
+        return False
