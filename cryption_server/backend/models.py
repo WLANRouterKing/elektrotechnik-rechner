@@ -1,5 +1,7 @@
 from datetime import datetime
-from flask import flash
+from re import search
+
+from flask import flash, escape
 from ..models import Database, SystemMail
 
 
@@ -11,6 +13,25 @@ class FailedLoginRecord(Database):
         self.exclude_from_encryption.pop(1)
 
 
+class BeUserSettings(Database):
+
+    def __int__(self):
+        super().__init__()
+        self.table_name = "be_user_settings"
+
+    @property
+    def send_lockout_notification(self):
+        return bool(self.get("ctrl_send_lockout_notification"))
+
+    @property
+    def send_login_notification(self):
+        return bool(self.get("ctrl_send_login_notification"))
+
+    @property
+    def send_failed_login_notification(self):
+        return bool(self.get("ctrl_send_failed_login_notification"))
+
+
 class BeUser(Database):
 
     def __init__(self):
@@ -19,6 +40,30 @@ class BeUser(Database):
         self.temp_password = ""
         self.ip_address = ""
         self.exists = False
+        self.settings = None
+
+    def load(self):
+        super().load()
+        self.settings = BeUserSettings()
+        # buggt wenn klasse innerhalb einer klasse erstellt wird
+        self.settings.table_name = "be_user_settings"
+        self.settings.set("user_id", self.get_id())
+        self.settings.load()
+
+    def prepare_form_input(self, form_request):
+        for key in form_request:
+            for admin_column in self.column_admin_rights:
+                if key not in self.filter_from_form_prepare:
+                    data = escape(form_request[key])
+                    if data == 'y':
+                        data = 1
+                    print(key)
+                    print(data)
+                    if key == admin_column:
+                        if self.is_admin:
+                            self.set(key, data)
+                    else:
+                        self.set(key, data)
 
     @property
     def is_locked(self):
@@ -89,26 +134,28 @@ class BeUser(Database):
         if self.create_instance_by("username"):
             self.exists = True
         if self.is_locked:
-            lockout_time = self.get("ctrl_lockout_time")
-            difference = lockout_time.timestamp() - datetime_now.timestamp()
-            if difference > 0:
-                flash("Ihr Account ist gesperrt", 'danger')
-                return False
-            else:
-                self.set("ctrl_locked", 0)
-                self.set("ctrl_lockout_time", None)
-                self.set("ctrl_failed_logins", 0)
+            if self.get("ctrl_lockout_time") is not None:
+                lockout_time = self.get("ctrl_lockout_time")
+                difference = lockout_time.timestamp() - datetime_now.timestamp()
+                if difference > 0:
+                    flash("Ihr Account ist gesperrt", 'danger')
+                else:
+                    self.set("ctrl_locked", 0)
+                    self.set("ctrl_lockout_time", None)
+                    self.set("ctrl_failed_logins", 0)
         if self.exists:
             stored_password = self.get("password")
+            print(stored_password)
             if self.encryption.validate_hash(stored_password, password):
                 self.set("ctrl_last_login", datetime_now)
                 self.set("ctrl_authenticated", 1)
                 self.set("ip_address", self.ip_address)
                 self.save()
-                system_mail.send_be_user_login_message(self)
+                if self.settings.send_login_notification:
+                    system_mail.send_be_user_login_message(self)
                 return True
             else:
-                failed_logins = int(self.get("ctrl_failed_logins"))
+                failed_logins = self.get_as_int("ctrl_failed_logins")
                 failed_logins = failed_logins + 1
                 self.set("ctrl_failed_logins", failed_logins)
                 if failed_logins >= 3:
@@ -120,7 +167,8 @@ class BeUser(Database):
                     self.set("ctrl_failed_logins", 0)
                     self.set("ctrl_lockout_time", date)
                     self.set("ctrl_authenticated", False)
-                    system_mail.send_be_user_lockout_message(self)
+                    if self.settings.send_lockout_notification:
+                        system_mail.send_be_user_lockout_message(self)
                 self.save()
         flash("Login nicht erfolgreich", 'danger')
         return False

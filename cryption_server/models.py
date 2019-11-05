@@ -1,7 +1,7 @@
 import os
 from re import search
 import mysql.connector
-from flask import jsonify, current_app, flash, url_for
+from flask import jsonify, current_app, flash, url_for, escape
 import nacl.utils
 import nacl.secret
 import nacl.encoding
@@ -69,6 +69,8 @@ class Encryption:
 
     def validate_hash(self, hash_string, string):
         try:
+            print(hash_string)
+            print(string)
             if nacl.pwhash.verify(bytes(hash_string, encoding="utf8"), bytes(string, encoding="utf8")):
                 return True
         except Exception as error:
@@ -100,6 +102,8 @@ class Database:
         self.table_name = ""
         self.arrData = dict()
         self.exclude_from_encryption = ["id", "username", "user_id", "ctrl"]
+        self.column_admin_rights = ["ctrl_access_level"]
+        self.filter_from_form_prepare = ["password", "csrf_token", "user_password", "submit"]
 
     """
     generische get funktion -> muss zur sicherheit noch ergänzt werden
@@ -130,6 +134,13 @@ class Database:
             user_id = 0
         return int(user_id)
 
+    def get_as_int(self, key):
+        string = self.get(key)
+        if string != "":
+            integer = int(string)
+            return integer
+        return 0
+
     """
     gibt ein MySQLConnection Objekt zurück
     """
@@ -152,6 +163,7 @@ class Database:
         cursor = connection.cursor()
         table = self.table_name
         id = 0
+        sql = ""
         if self.get_id() > 0:
             id = self.get_id()
             sql = """SELECT * FROM {0} WHERE id = %s""".format(table)
@@ -162,24 +174,19 @@ class Database:
             if id > 0:
                 cursor = connection.cursor(prepared=True)
                 cursor.execute(sql, [id])
-            else:
-                sql = """SELECT * FROM {0}""".format(table)
-                cursor.execute(sql)
-            result = dict()
-            columns = tuple([str(d[0]) for d in cursor.description])
-            for row in cursor:
-                result = dict(zip(columns, row))
-            self.arrData = result
-            for key in self.arrData:
-                try:
-                    if isinstance(self.get(key), bytearray):
-                        self.set(key, self.get(key).decode('utf-8'))
-                except Exception as error:
-                    my_logger.log(10, error)
-                    pass
-            self.decrypt_data()
-            rows = cursor.rowcount
-            if rows > 0:
+                result = dict()
+                columns = tuple([str(d[0]) for d in cursor.description])
+                for row in cursor:
+                    result = dict(zip(columns, row))
+                self.arrData = result
+                for key in self.arrData:
+                    try:
+                        if isinstance(self.get(key), bytearray):
+                            self.set(key, self.get(key).decode('utf-8'))
+                    except Exception as error:
+                        my_logger.log(10, error)
+                        pass
+                self.decrypt_data()
                 return True
         finally:
             if connection.is_connected():
@@ -362,7 +369,7 @@ class Database:
         rows = None
         try:
             table = self.table_name
-            sql = """SELECT id FROM {0} WHERE username = %s AND ctrl_active = 1""".format(table)
+            sql = """SELECT id FROM {0} WHERE username = %s""".format(table)
             cursor.execute(sql, [name])
             rows = cursor.fetchone()
         except Exception as error:
@@ -421,45 +428,38 @@ class SystemMail(Database):
     def set_subject(self, value):
         self.set("subject", value)
 
-    def send_be_user_activation_mail(self, beUser):
+    def send_be_user_activation_mail(self, be_user):
         host_protocol = current_app.config["HOST_PROTOCOL"]
-        username = beUser.get("username")
-        email = beUser.get("email")
-        activation_token = beUser.get("activation_token")
-        link = current_app.config["HOST"] + ":" + str(current_app.config["HOST_PORT"]) + \
-               url_for("backend.user_activate",
-                       user_id=beUser.get_id(),
-                       activation_token=activation_token)
+        username = be_user.get("username")
+        email = be_user.get("email")
+        activation_token = be_user.get("activation_token")
+        link = current_app.config["HOST"] + ":" + str(current_app.config["HOST_PORT"]) + url_for("backend.user_activate", user_id=be_user.get_id(), activation_token=activation_token)
         self.set_subject("Du wurdest hinzugefügt")
         self.add_line("""<h2>Hallo {0}</h2></br></br>""".format(username))
         self.add_line("""<p>Du wurdest zum Cryption Backend hinzugefügt<p></br>""")
-        self.add_line(
-            """<p>Bitte aktiviere deinen Account über folgenden Link: <a href="{0}{1}">Account aktivieren</a><p></br>""".format(
-                host_protocol, link))
+        self.add_line("""<p>Bitte aktiviere deinen Account über folgenden Link: <a href="{0}{1}">Account aktivieren</a><p></br>""".format(host_protocol, link))
         self.set_receiver(email)
         self.send_message()
 
-    def send_be_user_login_message(self, beUser):
-        username = beUser.get("username")
-        email = beUser.get("email")
-        ip_address = beUser.get("ip_address")
+    def send_be_user_login_message(self, be_user):
+        username = be_user.get("username")
+        email = be_user.get("email")
+        ip_address = be_user.get("ip_address")
         self.set_subject("Neuer Login")
         self.add_line("""<h2>Hallo {0}</h2></br></br>""".format(username))
         self.add_line("""<p>Es wurde ein neuer Login bei deinem Account festgestellt<p></br>""")
         self.add_line("""<p>IP Adresse: {0}<p></br>""".format(ip_address))
-        self.add_line(
-            """<p>Falls du das nicht warst empfehlen wir dir sofort das Passwort zu ändern!</p>""")
+        self.add_line("""<p>Falls du das nicht warst empfehlen wir dir sofort das Passwort zu ändern!</p>""")
         self.set_receiver(email)
         self.send_message()
 
-    def send_be_user_lockout_message(self, beUser):
-        username = beUser.get("username")
-        email = beUser.get("email")
-        ip_address = beUser.get("ip_address")
+    def send_be_user_lockout_message(self, be_user):
+        username = be_user.get("username")
+        email = be_user.get("email")
+        ip_address = be_user.get("ip_address")
         self.set_subject("Dein Zugang wurde gesperrt")
         self.add_line("""<h2>Hallo {0}</h2></br></br>""".format(username))
-        self.add_line(
-            """<p>Dein Zugang wurde aufgrund von zu vielen falschen Login Versuchen gesperrt<p></br>""")
+        self.add_line("""<p>Dein Zugang wurde aufgrund von zu vielen falschen Login Versuchen gesperrt<p></br>""")
         self.add_line("""<p>letzte IP Adresse: {0}<p></br>""".format(ip_address))
         self.set_receiver(email)
         self.send_message()

@@ -1,7 +1,8 @@
 from flask import render_template, request, flash, redirect, url_for, escape, abort
+from validate_email import validate_email
 from . import backend
 from .models import BeUser, FailedLoginRecord
-from .forms import LoginForm, AddUserForm, EditUserForm
+from .forms import LoginForm, AddUserForm, EditUserForm, EditAccountForm
 from flask_login import login_user, current_user, login_required, logout_user
 from cryption_server import login_manager, nav
 
@@ -17,7 +18,16 @@ nav.Bar('main', [
     nav.Item('Benutzer', 'backend.user', items=[
         nav.Item('Benutzer hinzufügen', 'backend.user_add')
     ]),
-    nav.Item('Logout', 'backend.logout')
+    nav.Item('System', '', items=[
+        nav.Item("Fehlgeschlagene Login Versuche", 'backend.failed_login_records'),
+        nav.Item("System Mails", 'backend.system_mails'),
+        nav.Item('Reports', 'backend.reports')
+    ]),
+    nav.Item('Account', '', items=[
+        nav.Item("Account bearbeiten", 'backend.account_edit'),
+        nav.Item("Account Einstellungen", 'backend.account_settings'),
+        nav.Item('Logout', 'backend.logout')
+    ])
 ])
 
 """
@@ -36,18 +46,76 @@ def login():
             be_user.ip_address = escape(request.remote_addr)
             if be_user.validate_login():
                 login_user(be_user)
+                return redirect(url_for("backend.dashboard"))
             else:
                 failed_login_record = FailedLoginRecord()
                 failed_login_record.set("user_id", be_user.get_id())
                 failed_login_record.set("username", be_user.get("username"))
                 failed_login_record.set("ip_address", be_user.ip_address)
                 failed_login_record.save()
-            return redirect(url_for("backend.dashboard"))
-        if form.username.errors:
-            flash(form.username.errors, 'danger')
-        if form.password.errors:
-            flash(form.password.errors, 'danger')
+        else:
+            form.get_error_messages()
     return render_template("/backend/login.html", form=form)
+
+
+"""
+account editieren
+"""
+
+
+@backend.route("/account/settings", methods=["GET", "POST"])
+@login_required
+def account_settings():
+    user = current_user
+    form = EditAccountForm(request.form)
+    if user.get_id():
+        form.init_user_values(user)
+    if request.method == "POST":
+        if form.validate_on_submit():
+            user.temp_password = escape(request.form["user_password"])
+            if user.encryption.validate_hash(user.get("password"), user.temp_password):
+                user.prepare_form_input(request.form)
+                if user.save():
+                    new_user = BeUser()
+                    new_user.set("id", user.get_id())
+                    new_user.load()
+                    logout_user()
+                    login_user(new_user)
+                    flash("Accountdaten erfolgreich aktualisiert", "success")
+                    return redirect(url_for("backend.account_edit"))
+                else:
+                    flash("Accountdaten konnten nicht aktualisiert werden")
+    return render_template("/backend/account_edit.html", form=form)
+
+
+"""
+account editieren
+"""
+
+
+@backend.route("/account/edit", methods=["GET", "POST"])
+@login_required
+def account_edit():
+    user = current_user
+    form = EditAccountForm(request.form)
+    if user.get_id():
+        form.init_user_values(user)
+    if request.method == "POST":
+        if form.validate_on_submit():
+            user.temp_password = escape(request.form["user_password"])
+            if user.encryption.validate_hash(user.get("password"), user.temp_password):
+                user.prepare_form_input(request.form)
+                if user.save():
+                    new_user = BeUser()
+                    new_user.set("id", user.get_id())
+                    new_user.load()
+                    logout_user()
+                    login_user(new_user)
+                    flash("Accountdaten erfolgreich aktualisiert", "success")
+                    return redirect(url_for("backend.account_edit"))
+                else:
+                    flash("Accountdaten konnten nicht aktualisiert werden")
+    return render_template("/backend/account_edit.html", form=form)
 
 
 """
@@ -65,46 +133,23 @@ def be_user_edit(user_id):
         if user_id > 0:
             user.set("id", user_id)
             user.load()
-            form.username.data = user.get("username")
-            form.password.data = ""
-            form.email.data = user.get("email")
-            form.ctrl_access_level.data = user.get("ctrl_access_level")
-            form.ctrl_last_login.data = user.get("ctrl_last_login")
-            form.ctrl_active.data = user.get("ctrl_active")
-            form.activation_token.data = user.get("activation_token")
-            form.ctrl_failed_logins.data = user.get("ctrl_failed_logins")
-            form.ctrl_locked.data = user.get("ctrl_locked")
-            form.ctrl_lockout_time.data = user.get("ctrl_lockout_time")
-            form.ctrl_authenticated.data = user.get("ctrl_authenticated")
-        if request.method == "POST" and form.validate_on_submit():
-            be_user.temp_password = escape(request.form["user_password"])
-            if be_user.validate_login():
-                password = user.hash_password(escape(request.form["password"]))
-                user.set("username", escape(request.form["username"]))
-                user.set("password", password)
-                user.set("email", escape(request.form["email"]))
-                user.set("ctrl_access_level", escape(request.form["ctrl_access_level"]))
-                user.set("ctrl_last_login", escape(request.form["ctrl_last_login"]))
-                user.set("ctrl_active", escape(request.form["ctrl_active"]))
-                user.set("activation_token", escape(request.form["activation_token"]))
-                user.set("ctrl_failed_logins", escape(request.form["ctrl_failed_logins"]))
-                user.set("ctrl_locked", escape(request.form["ctrl_locked"]))
-                user.set("ctrl_lockout_time", escape(request.form["ctrl_lockout_time"]))
-                user.set("ctrl_authenticated", escape(request.form["ctrl_authenticated"]))
-                if user.save():
-                    flash("Der Benutzer wurde erfolgreich aktualisiert", 'success')
+            form.init_user_values(user)
+        if request.method == "POST":
+            if form.validate_on_submit():
+                be_user.temp_password = escape(request.form["user_password"])
+                if be_user.encryption.validate_hash(be_user.get("password"), be_user.temp_password):
+                    if user.save():
+                        flash("Der Benutzer wurde erfolgreich aktualisiert", 'success')
+                    else:
+                        flash("Der Benutzer konnte nicht aktualisiert werden", 'danger')
                 else:
-                    flash("Der Benutzer konnte nicht aktualisiert werden", 'danger')
+                    flash("Sie haben ein falsches Passwort eingegeben", 'danger')
             else:
-                flash("Sie haben ein falsches Passwort eingegeben", 'danger')
-        if form.username.errors:
-            flash(form.username.errors, 'danger')
-        if form.password.errors:
-            flash(form.password.errors, 'danger')
-        if form.email.errors:
-            flash(form.email.errors, 'danger')
+                flash("Form konnte nicht validiert werden", 'danger')
+                form.get_error_messages()
         return render_template("backend/edit_user.html", form=form, user=user)
-    return redirect(url_for("backend.dashboard"))
+    else:
+        return redirect(url_for("backend.dashboard"))
 
 
 """
@@ -116,30 +161,37 @@ benutzer hinzufügen
 @login_required
 def be_user_add():
     form = AddUserForm(request.form)
-    if request.method == "POST" and form.validate_on_submit():
-        be_user = BeUser()
-        username = escape(request.form["username"])
-        password = escape(request.form["password"])
-        email = escape(request.form["email"])
-        token = be_user.generate_activation_token()
-        password = be_user.hash_password(password)
-        ctrl_access_level = int(request.form["ctrl_access_level"])
-        be_user.set("username", username)
-        be_user.set("password", password)
-        be_user.set("email", email)
-        be_user.set("activation_token", token)
-        be_user.set("ctrl_access_level", ctrl_access_level)
-        if be_user.register():
-            flash("Der Benutzer wurde erfolgreich hinzugefügt", 'success')
-        else:
-            flash("Der Benutzer konnte nicht erstellt werden", 'danger')
-    if form.username.errors:
-        flash(form.username.errors, 'danger')
-    if form.password.errors:
-        flash(form.password.errors, 'danger')
-    if form.email.errors:
-        flash(form.email.errors, 'danger')
-    return render_template("backend/add_user.html", form=form)
+    user = current_user
+    if user.is_admin:
+        if request.method == "POST" and form.validate_on_submit():
+            be_user = BeUser()
+            username = escape(request.form["username"])
+            password = escape(request.form["password"])
+            email = escape(request.form["email"])
+            token = be_user.generate_activation_token()
+            password = be_user.hash_password(password)
+            ctrl_access_level = int(request.form["ctrl_access_level"])
+            be_user.set("username", username)
+            be_user.set("password", password)
+            be_user.set("email", email)
+            be_user.set("activation_token", token)
+            be_user.set("ctrl_access_level", ctrl_access_level)
+            if validate_email(be_user.get("email"), verify=True):
+                if be_user.register():
+                    flash("Der Benutzer wurde erfolgreich hinzugefügt", 'success')
+                else:
+                    flash("Der Benutzer konnte nicht erstellt werden", 'danger')
+            flash("Diese E-Mail Adresse scheint nicht zu existieren")
+        if form.username.errors:
+            flash(form.username.errors, 'danger')
+        if form.password.errors:
+            flash(form.password.errors, 'danger')
+        if form.email.errors:
+            flash(form.email.errors, 'danger')
+        return render_template("backend/add_user.html", form=form)
+    else:
+        flash("Du hast nicht die benötigten Rechte", 'danger')
+    return redirect(url_for("backend.dashboard"))
 
 
 """
