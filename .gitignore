@@ -102,11 +102,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-/pub.key
-/priv.key
-/sym.key
-/instance/config.py
 /myproject.ini
-/cryption_server.ini
 /myproject.sock
 /log.debug
