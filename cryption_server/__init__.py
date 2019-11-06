@@ -32,17 +32,15 @@ def create_app():
     login_manager.refresh_view = "backend.login"
     login_manager.needs_refresh_message = u"To protect your account, please reauthenticate to access this page."
     login_manager.needs_refresh_message_category = "info"
-    
+
     mail.init_app(app)
     nav.init_app(app)
 
     from .backend import backend as backend_blueprint
+    from .frontend import frontend as frontend_blueprint
+    from .api import api as api_blueprint
     app.register_blueprint(backend_blueprint, url_prefix='/backend/')
-
-    # from .frontend import frontend as frontend_blueprint
-    # app.register_blueprint(frontend_blueprint, url_prefix='/')
-
-    # from .api import api as api_blueprint
-    # app.register_blueprint(api_blueprint, url_prefix='/api/')
+    app.register_blueprint(frontend_blueprint, url_prefix='/')
+    app.register_blueprint(api_blueprint, url_prefix='/api/')
 
     return app
