@@ -740,21 +740,30 @@ class Trash(Database):
         self.table_name = "trash"
         self.put_into_trash = False
 
+    def get_item_id(self):
+        return self.get("item_id")
+
+    def get_item_table(self):
+        return self.get("item_table")
+
+    def get_time(self):
+        return self.get("ctrl_time")
+
     def recover(self):
-        connection = self.get_connection()
-        cursor = connection.cursor()
-        row = 0
-        try:
-            item_id = self.get("item_id")
-            item_table = self.get("item_table")
-            sql = """UPDATE {0} SET ctrl_deleted = 0 WHERE id = %s""".format(item_table)
-            cursor.execute(sql, item_id)
-            connection.commit()
-            row = cursor.lastrowid
-        except Exception as error:
-            my_logger.log(10, error)
-        if row > 0:
-            return self.delete()
+        with self.get_connection() as connection:
+            with connection.cursor() as cursor:
+                row = 0
+                try:
+                    item_id = self.get("item_id")
+                    item_table = self.get("item_table")
+                    sql = """UPDATE {0} SET ctrl_deleted = 0 WHERE id = %s""".format(item_table)
+                    cursor.execute(sql, item_id)
+                    connection.commit()
+                    row = cursor.lastrowid
+                except Exception as error:
+                    my_logger.log(10, error)
+                if row > 0:
+                    return self.delete()
         return False
 
     def delete_final(self):

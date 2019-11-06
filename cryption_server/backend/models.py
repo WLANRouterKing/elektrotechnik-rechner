@@ -121,6 +121,12 @@ class BeUser(Database):
                     else:
                         self.set(key, data)
 
+    def get_username(self):
+        return self.get("username")
+
+    def get_password(self):
+        return self.get("password")
+
     @property
     def is_locked(self):
         return bool(self.get("ctrl_locked"))
