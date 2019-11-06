@@ -109,3 +109,4 @@ venv.bak/
 /myproject.ini
 /cryption_server.ini
 /myproject.sock
+/log.debug
