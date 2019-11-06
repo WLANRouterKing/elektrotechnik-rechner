@@ -106,3 +106,6 @@ venv.bak/
 /priv.key
 /sym.key
 /instance/
+/myproject.ini
+/cryption_server.ini
+/myproject.sock

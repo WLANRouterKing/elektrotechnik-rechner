@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 from flask import render_template, request, flash, redirect, url_for, escape, abort
 from validate_email import validate_email
 from cryption_server.models import SystemMail
@@ -46,7 +48,8 @@ def login():
             be_user.temp_password = escape(request.form["password"])
             be_user.ip_address = escape(request.remote_addr)
             if be_user.validate_login():
-                login_user(be_user)
+                session_user = be_user.create_session_user()
+                login_user(session_user)
                 return redirect(url_for("backend.dashboard"))
             else:
                 failed_login_record = FailedLoginRecord()
@@ -273,11 +276,12 @@ der in der session gespeicherte benutzer geladen wenn vorhanden
 
 @login_manager.user_loader
 def load_user(user_id):
-    if user_id != "":
+    if user_id > 0:
         user = BeUser()
         user.set("id", user_id)
         user.load()
-        return user
+        session_user = user.create_session_user()
+        return session_user
     else:
         return None
 
@@ -332,8 +336,11 @@ def user_activate(user_id, activation_token):
 @login_required
 def logout():
     user = current_user
-    user.set("ctrl_authenticated", 0)
-    user.save()
+    be_user = BeUser()
+    be_user.set("id", user.id)
+    be_user.load()
+    be_user.set("ctrl_authenticated", 0)
+    be_user.save()
     if logout_user():
         return redirect(url_for("backend.login"))
 

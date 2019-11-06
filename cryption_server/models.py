@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 from re import search
 import mysql.connector
 import copy
@@ -15,63 +17,132 @@ from cryption_server import my_logger
 
 
 class Encryption:
+    """
+    Verschlüsselungs Klasse
+    """
 
     def create_random_token(self, length):
+        """
+        Generiert einen Token mit random bytes
+
+        Args:
+            length: Die Länge des Tokens
+
+        Returns:
+            str: Den generierten Token
+
+        """
         return nacl.utils.random(length)
 
     def bin_2_hex(self, value):
+        """
+        Konvertiert bytes in ihre hexadezimale darstellung
+
+        Args:
+            value: Der Byte-String der konvertiert werden soll
+
+        Returns:
+            str: Den hexadezimalen String
+
+        """
         return nacl.encoding.HexEncoder.encode(value).decode('utf-8')
 
     def hex_2_bin(self, value):
+        """
+        Konvertiert einen hexadezimalen String in einen Byte-String
+
+        Args:
+            value: Der hexadezimale String
+
+        Returns:
+            str: Den Byte-String
+
+        """
         return nacl.encoding.HexEncoder.decode(value)
 
     def create_sym_key(self):
+        """
+        Erstellt einen Schlüssel für die symmetrische Verschlüsselung
+
+        Returns:
+            str: Der generierte Schlüssel
+
+        """
         return self.bin_2_hex(self.create_random_token(nacl.secret.SecretBox.KEY_SIZE))
 
-    """
-    liefert den schlüssel zum symmetrischen verschlüsseln
-    """
-
     def get_sym_key(self):
+        """
+        Liefert den Schlüssel für die Synchrone Verschlüsselung aus der App Config
+
+        Returns:
+            str: Den Schlüssel
+        """
         return self.hex_2_bin(current_app.config["SYM_KEY"])
 
-    """
-    symmetrische verschlüsselungsmethode
-    """
-
     def encrypt(self, data):
+        """
+        Verschlüsselt den übergebenen String mit dem symmetrischen Schlüssel
+
+        Args:
+            data: Der String der verschlüsselt werden soll
+
+        Returns:
+            str: Der verschlüsselte String oder der übergebene String wenn die Verschlüsselung fehlgeschlagen ist
+        """
         try:
-            box = nacl.secret.SecretBox(self.get_sym_key())
+            box = nacl.secret.SecretBox(self.get_sym_key)
             data_encrypted = box.encrypt(bytes(data, encoding="utf-8"), nonce=None, encoder=encoding.Base64Encoder)
             return data_encrypted.decode('utf-8')
         except Exception as error:
             my_logger.log(10, error)
         return data
 
-    """
-    symmetrische entschlüsselungsmethode
-    """
-
     def decrypt(self, data):
+        """
+        Entschlüsselt den übergebenen String mit dem symmetrischen Schlüssel
+
+        Args:
+            data: Der String der entschlüsselt werden soll
+
+        Returns:
+            Den entschlüsselten String insofern die Entschlüsselung erfolgreich war
+            Ansonsten wird der übergebene String zurück gegeben
+
+        """
         try:
-            box = nacl.secret.SecretBox(self.get_sym_key())
+            box = nacl.secret.SecretBox(self.get_sym_key)
             data_decrypted = box.decrypt(bytes(data, encoding="utf-8"), nonce=None, encoder=encoding.Base64Encoder)
             return data_decrypted.decode('utf-8')
         except Exception as error:
             my_logger.log(10, error)
         return data
 
-    """
-    liefert einen password hash zurück (argon2id)
-    """
-
     def hash_password(self, password):
+        """
+        Generiert einen sicheren Hash für das Passwort
+
+        Args:
+            password: Das Passwort das gehashed werden soll
+
+        Returns:
+            str: Den Passwort Hash
+
+        """
         return nacl.pwhash.argon2id.str(password.encode())
 
     def validate_hash(self, hash_string, string):
+        """
+        Validiert einen String und Hash
+
+        Args:
+            hash_string: Der Hash gegen den die Validierung durchgeführt wird
+            string: Das übergebene Klartext Passwort
+
+        Returns:
+            bool: True wenn das Passwort mit dem Hash übereinstimmt andernfalls False
+
+        """
         try:
-            print(hash_string)
-            print(string)
             if nacl.pwhash.verify(bytes(hash_string, encoding="utf8"), bytes(string, encoding="utf8")):
                 return True
         except Exception as error:
@@ -80,25 +151,48 @@ class Encryption:
         return False
 
     def as_base_64(self, data):
+        """
+        Base64 encoded einen String
+
+        Args:
+            data: der String der Base64 encoded werden soll
+
+        Returns:
+            str: den Base64 String
+
+        """
         return nacl.encoding.Base64Encoder.encode(data)
 
     def get_key_pair(self):
+        """
+        Generiert ein asynchrones Public/Private KeyPair
+
+        Returns:
+            KeyPair: Das generierte Schlüsselpaar Objekt
+
+        """
         secret_key = PrivateKey.generate()
         public_key = secret_key.public_key
-        public_key_encrypted = self.encrypt(public_key.encode(encoder=encoding.RawEncoder))
-        private_key_encrypted = self.encrypt(secret_key.encode(encoder=encoding.RawEncoder))
         key_pair = KeyPair()
-        key_pair.set_private_key(private_key_encrypted)
-        key_pair.set_public_key(public_key_encrypted)
+        key_pair.set_private_key(secret_key)
+        key_pair.set_public_key(public_key)
         return key_pair
 
 
 class Database:
     """
-    init funktion setzt tabellen namen, system objekt, arrData und initialisiert die datenbankverbindung
+
+    Eltern Klasse für alle Datenbankbezogenen Objekte
+
     """
 
     def __init__(self):
+        """
+
+        Setzt die Default Werte der Klasse
+
+        """
+        self.connection = None
         self.encryption = Encryption()
         self.class_label = ""
         self.table_name = ""
@@ -106,64 +200,139 @@ class Database:
         self.put_into_trash = True
         self.exclude_from_encryption = ["id", "username", "user_id", "ctrl"]
         self.column_admin_rights = ["ctrl_access_level"]
-        self.filter_from_form_prepare = ["password", "csrf_token", "user_password", "submit"]
+        self.filter_from_form_prepare = ["csrf_token", "user_password", "submit"]
 
-    """
-    generische get funktion -> muss zur sicherheit noch ergänzt werden
-    """
+    def __del__(self):
+        """
+
+        Klassen Destruktor
+        Schließt die Datenbankverbindung
+
+        """
+        self.close_connection()
 
     def get(self, key):
+        """
+        Generische Get-Funktion
+
+        Args:
+            key: Der Key in self.arrData der zurück gegeben werden soll
+
+        Returns:
+            str: Den gewünschten Wert aus arrData oder ein leerer String
+
+        """
         if key in self.arrData:
             return self.arrData[key]
         else:
             return ""
 
-    """
-    generische set funktion -> muss zur sicherheit noch ergänzt werden
-    """
-
     def set(self, key, value):
+        """
+        Generische Set-Funktion
+
+        Args:
+            key: Der Index der gesetzt werden soll
+            value: Der Wert für den Index
+
+        Returns:
+
+        """
         self.arrData[key] = value
 
     def get_id(self):
+        """
+        Gibt die Id des Datenbank-Objekts als Integer zurück
+
+        Returns:
+            int: Die Id des Datenbank-Objekts
+
+        """
         id = self.get("id")
         if id == "":
             id = 0
         return int(id)
 
     def get_user_id(self):
+        """
+        Gibt die Benutzer-Id des Datenbank-Objekts als Integer zurück
+
+        Returns:
+            int: Die Benutzer-Id des Datenbank-Objekts
+
+        """
         user_id = self.get("user_id")
         if user_id == "":
             user_id = 0
         return int(user_id)
 
     def get_as_int(self, key):
+        """
+        Liefert einen Integer Wert für einen Schlüssel
+
+        Args:
+            key: Der Schlüssel der als Integer aus arrData zurück gegeben werden soll
+
+        Returns:
+            int: Den Integer Wert für den Schlüssel insofern dieser Konvertiert werden kannn ansonsten 0
+        """
         string = self.get(key)
         if string != "":
             integer = int(string)
             return integer
         return 0
 
-    """
-    gibt ein MySQLConnection Objekt zurück
-    """
+    def create_connection(self):
+        """
+        Erstellt und öffnet anhand der Config eine Datenbankverbindung
 
-    def get_connection(self):
+        Returns:
+
+        """
         host = current_app.config["DATABASE_HOST"]
-        name = current_app.config["DATABASE_NAME"]
+        database = current_app.config["DATABASE_NAME"]
         user = current_app.config["DATABASE_USER"]
         password = current_app.config["DATABASE_PASSWORD"]
-        return mysql.connector.connect(host=host, database=name, user=user,
-                                       password=password)
+        self.connection = mysql.connector.connect(host=host, database=database, user=user, password=password)
 
-    """
-    lädt einen datensatz anhand der id oder user_id aus der datenbank
-    ist keine id angegeben wird die komplette tabelle geladen
-    """
+    def get_connection(self):
+        """
+        Gibt die Datenbankverbindung zurück
+
+        Returns:
+            MySQLConnection: Die Datenbankverbindung
+
+        """
+        if self.connection is None:
+            self.create_connection()
+        return self.connection
+
+    def close_connection(self):
+        """
+        Schließt die Datenbankverbindung insofern diese Verbunden ist
+
+        Returns:
+            bool: True wenn die Datenbankverbindung geschlossen wurde andernfalls False
+
+        """
+        if self.connection.is_connected():
+            self.connection.close()
+            return True
+        return False
 
     def load(self):
+        """
+        Generische Funktion zum Laden eines Datenbank-Objekts
+
+        Die SQL Query wird anhand der gesetzten Werte in arrData
+        automatisch angepasst.
+
+        Returns:
+            bool: True wenn das Objekt erfolgreich geladen wurde andernfalls False
+
+        """
         connection = self.get_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(prepared=True)
         table = self.table_name
         id = 0
         sql = ""
@@ -175,7 +344,6 @@ class Database:
             sql = """SELECT * FROM {0} WHERE user_id = %s""".format(table)
         try:
             if id > 0:
-                cursor = connection.cursor(prepared=True)
                 cursor.execute(sql, [id])
                 result = dict()
                 columns = tuple([str(d[0]) for d in cursor.description])
@@ -191,20 +359,23 @@ class Database:
                         pass
                 self.decrypt_data()
                 return True
-        finally:
-            if connection.is_connected():
-                cursor.close()
-                connection.close()
+        except Exception as error:
+            my_logger.log(10, error)
 
         return False
 
-    """
-    generische update funktion
-    verarbeitet die key,value pairs aus arrData in ein prepared statement mit platzhaltern
-    und führt danach die query aus
-    """
-
     def update(self):
+        """
+        Generische Update Funktion
+
+        Aus arrData werden die Key/Value Paare extrahiert und in einen String, durch Komma getrennt, gespeichert
+        Die Platzhalter für das Prepared Statement werden anhand der Länge von arrData erstellt
+        Das Tuple mit den Values wird beim ausführen an das Statement gebunden
+
+        Returns:
+            bool: True wenn das Update erfolgreich ausgeführt wurde andernfalls False
+
+        """
         connection = self.get_connection()
         cursor = connection.cursor(prepared=True)
         try:
@@ -239,20 +410,22 @@ class Database:
                 return True
         except Exception as error:
             my_logger.log(10, error)
-        finally:
-            if connection.is_connected():
-                cursor.close()
-                connection.close()
 
         return False
 
-    """
-    generische insert methode
-    verarbeitet die key,value pairs aus arrData in ein prepared statement mit platzhaltern
-    und führt danach die query aus
-    """
-
     def insert(self):
+        """
+        Generische Insert Funktion
+
+        Aus arrData werden die Key/Value Paare extrahiert und in einen String, durch Komma getrennt, gespeichert
+        Die Platzhalter für das Prepared Statement werden anhand der Länge von arrData erstellt
+        Das Tuple mit den Values wird beim ausführen an das Statement gebunden
+
+        Returns:
+            bool: False wenn das Objekt nicht eingetragen werden konnte
+            int: Die Id des Objekts wenn es erfolgreich eingetragen wurde
+
+        """
         connection = self.get_connection()
         cursor = connection.cursor(prepared=True)
         try:
@@ -269,13 +442,20 @@ class Database:
                 return row
         except Exception as error:
             my_logger.log(10, error)
-        finally:
-            if connection.is_connected:
-                cursor.close()
-                connection.close()
+
         return False
 
     def delete(self):
+        """
+        Löscht ein Datenbankobjekt
+
+        Wenn self.put_into_trash auf True gesetzt wird, wird das Objekt im Papierkorb
+        abgelegt. Andernfalls wird das Objekt direkt gelöscht.
+
+        Returns:
+            bool: True wenn das Objekt direkt aus der Datenbank gelöscht wurde andernfalls False
+
+        """
         connection = self.get_connection()
         cursor = connection.cursor(prepared=True)
         success = False
@@ -307,13 +487,20 @@ class Database:
                     success = True
             except Exception as error:
                 my_logger.log(10, error)
-            finally:
-                if connection.is_connected():
-                    cursor.close()
-                    connection.close()
+
         return success
 
     def id_list(self, sql_where):
+        """
+        Liefert eine Id List anhand des Tabellennamens
+
+        Args:
+            sql_where: Optional - Ein SQL-Where Statement zum filtern der Liste
+
+        Returns:
+            list: Die Id Liste
+
+        """
         connection = self.get_connection()
         cursor = connection.cursor()
         self.list = list()
@@ -335,10 +522,7 @@ class Database:
                     self.list.append(row[0])
         except Exception as error:
             my_logger.log(10, error)
-        finally:
-            if connection.is_connected():
-                cursor.close()
-                connection.close()
+
         return self.list
 
     def object_list(self, object=None, sql_where=""):
@@ -411,10 +595,6 @@ class Database:
             rows = cursor.fetchone()
         except Exception as error:
             my_logger.log(10, error)
-        finally:
-            if connection.is_connected():
-                cursor.close()
-                connection.close()
         if rows is not None:
             id = rows[0]
             if id > 0:
@@ -434,10 +614,6 @@ class Database:
             rows = cursor.fetchone()
         except Exception as error:
             my_logger.log(10, error)
-        finally:
-            if connection.is_connected():
-                cursor.close()
-                connection.close()
         if rows is not None:
             return rows[0]
         return 0
@@ -577,10 +753,6 @@ class Trash(Database):
             row = cursor.lastrowid
         except Exception as error:
             my_logger.log(10, error)
-        finally:
-            if connection.is_connected():
-                cursor.close()
-                connection.close()
         if row > 0:
             return self.delete()
         return False
@@ -598,10 +770,6 @@ class Trash(Database):
             row = cursor.lastrowid
         except Exception as error:
             my_logger.log(10, error)
-        finally:
-            if connection.is_connected():
-                cursor.close()
-                connection.close()
         if row > 0:
             return self.delete()
         return False

@@ -1,5 +1,9 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 from datetime import datetime
 from flask import flash, escape
+from flask_login import UserMixin
+
 from ..models import Database, SystemMail
 
 
@@ -12,23 +16,86 @@ class FailedLoginRecord(Database):
         self.exclude_from_encryption.pop(1)
 
 
-class BeUserSettings(Database):
+class SessionUser(UserMixin):
+    username = ""
+    last_login = ""
+    admin = False
+    moderator = False
+    user = False
+    active = False
+    authenticated = False
+    anonymous = False
+    locked = False
+    activation_token = False
+    id = 0
 
-    def __int__(self):
-        super().__init__()
-        self.table_name = "be_user_settings"
+    def get_id(self):
+        return self.id
 
     @property
-    def send_lockout_notification(self):
-        return bool(self.get("ctrl_send_lockout_notification"))
+    def is_locked(self):
+        return self.locked
 
     @property
-    def send_login_notification(self):
-        return bool(self.get("ctrl_send_login_notification"))
+    def is_admin(self):
+        return self.admin
 
     @property
-    def send_failed_login_notification(self):
-        return bool(self.get("ctrl_send_failed_login_notification"))
+    def is_moderator(self):
+        return self.moderator
+
+    @property
+    def is_user(self):
+        return self.user
+
+    @property
+    def has_activation_token(self):
+        return self.activation_token
+
+    @property
+    def is_active(self):
+        return self.active
+
+    @property
+    def is_authenticated(self):
+        return self.authenticated
+
+    @property
+    def is_anonymous(self):
+        return self.anonymous
+
+    def init_values(self, be_user):
+        id = be_user.get_as_int("id")
+        ctrl_access_level = be_user.get_as_int("ctrl_access_level")
+        ctrl_active = be_user.get_as_int("ctrl_active")
+        ctrl_authenticated = be_user.get_as_int("ctrl_authenticated")
+        ctrl_locked = be_user.get_as_int("ctrl_locked")
+        activation_token = be_user.get("activation_token")
+        username = be_user.get("username")
+        last_login = be_user.get("ctrl_last_login")
+
+        self.last_login = last_login
+        self.username = username
+        self.id = id
+
+        if len(activation_token) == 64:
+            self.activation_token = True
+
+        if ctrl_access_level == 10:
+            self.admin = True
+        elif ctrl_access_level == 5:
+            self.moderator = True
+        else:
+            self.user = True
+
+        if ctrl_active == 1:
+            self.active = True
+
+        if ctrl_authenticated == 1:
+            self.authenticated = True
+
+        if ctrl_locked == 1:
+            self.locked = True
 
 
 class BeUser(Database):
@@ -41,14 +108,6 @@ class BeUser(Database):
         self.exists = False
         self.settings = None
 
-    def load(self):
-        super().load()
-        self.settings = BeUserSettings()
-        # buggt wenn klasse innerhalb einer klasse erstellt wird
-        self.settings.table_name = "be_user_settings"
-        self.settings.set("user_id", self.get_id())
-        self.settings.load()
-
     def prepare_form_input(self, form_request):
         for key in form_request:
             for admin_column in self.column_admin_rights:
@@ -56,8 +115,6 @@ class BeUser(Database):
                     data = escape(form_request[key])
                     if data == 'y':
                         data = 1
-                    print(key)
-                    print(data)
                     if key == admin_column:
                         if self.is_admin:
                             self.set(key, data)
@@ -134,13 +191,12 @@ class BeUser(Database):
                     self.set("ctrl_failed_logins", 0)
         if self.exists:
             stored_password = self.get("password")
-            print(stored_password)
             if self.encryption.validate_hash(stored_password, password):
                 self.set("ctrl_last_login", datetime_now)
                 self.set("ctrl_authenticated", 1)
                 self.set("ip_address", self.ip_address)
                 self.save()
-                if self.settings.send_login_notification:
+                if True:
                     system_mail.send_be_user_login_message(self)
                 return True
             else:
@@ -156,11 +212,16 @@ class BeUser(Database):
                     self.set("ctrl_failed_logins", 0)
                     self.set("ctrl_lockout_time", date)
                     self.set("ctrl_authenticated", False)
-                    if self.settings.send_lockout_notification:
+                    if True:
                         system_mail.send_be_user_lockout_message(self)
                 self.save()
         flash("Login nicht erfolgreich", 'danger')
         return False
+
+    def create_session_user(self):
+        session_user = SessionUser()
+        session_user.init_values(self)
+        return session_user
 
     def register(self):
         system_mail = SystemMail()
