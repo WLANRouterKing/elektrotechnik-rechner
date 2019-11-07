@@ -3,7 +3,7 @@
 {% block be_users_add %}
     <div class="col-lg-4">
         {% if form %}
-            <form id="register-form" method="post" action="{{ url_for('backend.be_user_add') }}">
+            <form id="register-form" method="post" action="{{ url_for('backend.register') }}">
                 {{ form.csrf_token }}
                 <div class="form-group">
                     {{ form.username.label }}

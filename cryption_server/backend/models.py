@@ -197,6 +197,7 @@ class BeUser(Database):
                     self.set("ctrl_failed_logins", 0)
         if self.exists:
             stored_password = self.get("password")
+            print(stored_password)
             if self.encryption.validate_hash(stored_password, password):
                 self.set("ctrl_last_login", datetime_now)
                 self.set("ctrl_authenticated", 1)
@@ -215,7 +216,7 @@ class BeUser(Database):
                     timestamp = time + 3600
                     date = datetime.fromtimestamp(timestamp)
                     self.set("ctrl_locked", 1)
-                    self.set("ctrl_failed_logins", 0)
+                    self.set("ctrl_failed_logins", 3)
                     self.set("ctrl_lockout_time", date)
                     self.set("ctrl_authenticated", False)
                     if True:

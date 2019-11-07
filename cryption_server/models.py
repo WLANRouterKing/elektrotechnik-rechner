@@ -90,10 +90,12 @@ class Encryption:
             str: Der verschlüsselte String oder der übergebene String wenn die Verschlüsselung fehlgeschlagen ist
         """
         try:
-            box = nacl.secret.SecretBox(self.get_sym_key)
+            box = nacl.secret.SecretBox(self.get_sym_key())
             data_encrypted = box.encrypt(bytes(data, encoding="utf-8"), nonce=None, encoder=encoding.Base64Encoder)
             return data_encrypted.decode('utf-8')
         except Exception as error:
+            print(data)
+            print(error)
             my_logger.log(10, error)
         return data
 
@@ -110,12 +112,12 @@ class Encryption:
 
         """
         try:
-            box = nacl.secret.SecretBox(self.get_sym_key)
+            box = nacl.secret.SecretBox(self.get_sym_key())
             data_decrypted = box.decrypt(bytes(data, encoding="utf-8"), nonce=None, encoder=encoding.Base64Encoder)
             return data_decrypted.decode('utf-8')
         except Exception as error:
             my_logger.log(10, error)
-        return data
+        return ""
 
     def hash_password(self, password):
         """
@@ -198,7 +200,7 @@ class Database:
         self.table_name = ""
         self.arrData = dict()
         self.put_into_trash = True
-        self.exclude_from_encryption = ["id", "username", "user_id", "ctrl"]
+        self.exclude_from_encryption = ["id", "password", "username", "user_id", "ctrl"]
         self.column_admin_rights = ["ctrl_access_level"]
         self.filter_from_form_prepare = ["csrf_token", "user_password", "submit"]
 
@@ -315,9 +317,10 @@ class Database:
             bool: True wenn die Datenbankverbindung geschlossen wurde andernfalls False
 
         """
-        if self.connection.is_connected():
-            self.connection.close()
-            return True
+        if self.connection is not None:
+            if self.connection.is_connected():
+                self.connection.close()
+                return True
         return False
 
     def load(self):
@@ -591,6 +594,7 @@ class Database:
                 return False
             table = self.table_name
             sql = """SELECT id FROM {0} WHERE {1} = %s""".format(table, key)
+            print(sql)
             cursor.execute(sql, [value])
             rows = cursor.fetchone()
         except Exception as error:

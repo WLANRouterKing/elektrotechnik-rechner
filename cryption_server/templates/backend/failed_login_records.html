@@ -15,10 +15,10 @@
             {% for failed_login_record in failed_login_records %}
                 <tr>
                     <th scope="row">{{ failed_login_record.get_id() }}</th>
-                    <td>{{ failed_login_record.get('user_id') }}</td>
-                    <td>{{ failed_login_record.get('username') }}</td>
-                    <td>{{ failed_login_record.get('ip_address') }}</td>
-                    <td>{{ failed_login_record.get('ctrl_time') }}</td>
+                    <td>{{ failed_login_record.get_user_id() }}</td>
+                    <td>{{ failed_login_record.get_username() }}</td>
+                    <td>{{ failed_login_record.get_ip_address() }}</td>
+                    <td>{{ failed_login_record.get_ctrl_time() }}</td>
                     {% if current_user.is_admin %}
                         <td class="remove"><a
                                 href="{{ url_for('backend.failed_login_records_delete',id=failed_login_record.get_id()) }}"><i

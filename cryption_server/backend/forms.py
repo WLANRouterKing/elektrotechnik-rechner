@@ -1,12 +1,69 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+from re import search
+
 from flask import flash
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, SelectField, DateTimeField, BooleanField
 from wtforms.validators import DataRequired, EqualTo, Length, Email
 
+from cryption_server import my_logger
 
-class EditAccountForm(FlaskForm):
+
+class CustomForm(FlaskForm):
+
+    def exclude_from_error_messages(self):
+        """
+
+        Returns:
+            list: Die Liste der Felder, die beim generieren der Fehlermeldungen und beim initialisieren übersprungen werden sollen
+        """
+        return ["meta", "_prefix", "_errors", "_fields", "_csrf", "csrf_token", "submit"]
+
+    def get_error_messages(self):
+        """
+        Liefert die Fehlermeldungen falls die Validierung eines Form Feldes fehl schlägt
+
+        Returns:
+            bool: True wenn Fehlermeldungen vorhanden sind andernfalls False
+
+        """
+        errors = 0
+        for attribute in self.__dict__:
+            if attribute not in self.exclude_from_error_messages():
+                element = self.__dict__[attribute]
+                if element.errors:
+                    flash(element.label, "danger")
+                    flash(element.errors, "danger")
+                    errors += 1
+        return errors > 0
+
+    def init_user_values(self, user):
+        """
+        initialisiert diese Form anhand des übergebenen Benutzer Objekts
+
+        Args:
+            user: Der Benutzer dessen Daten initialisiert werden sollen
+
+        Returns:
+            bool: True wenn alle Daten initialisiert werden konnten andernfalls False
+
+        """
+        for attribute in self.__dict__:
+            errors = 0
+            if attribute not in self.exclude_from_error_messages():
+                try:
+                    element = self.__dict__[attribute]
+                    value = user.get(attribute)
+                    element.data = value
+                except Exception as error:
+                    my_logger.log(10, error)
+                finally:
+                    errors += 1
+            return errors > 0
+
+
+class EditAccountForm(CustomForm):
     username = StringField('Benutzername', validators=[DataRequired(), Length(min=4, max=30)])
     password = PasswordField('Passwort', validators=[EqualTo('password2', message='Passwörter müssen übereinstimmen')])
     password2 = PasswordField('Passwort wiederholen')
@@ -21,64 +78,14 @@ class EditAccountForm(FlaskForm):
     user_password = PasswordField("Ihr Benutzerpasswort zur Authentifizierung", validators=[DataRequired(), Length(min=4, max=128)])
     submit = SubmitField('Account aktualisieren')
 
-    def init_user_values(self, user):
-        self.username.data = user.get("username")
-        self.password.data = ""
-        self.email.data = user.get("email")
-        self.ctrl_access_level.data = user.get("ctrl_access_level")
-        self.ctrl_last_login.data = user.get("ctrl_last_login")
-        self.ctrl_active.data = int(user.get("ctrl_active"))
-        self.activation_token.data = user.get("activation_token")
-        self.ctrl_failed_logins.data = user.get("ctrl_failed_logins")
-        self.ctrl_locked.data = int(user.get("ctrl_locked"))
-        self.ctrl_authenticated.data = int(user.get("ctrl_authenticated"))
 
-    def get_error_messages(self):
-        if self.username.errors:
-            flash(self.username.label)
-            flash(self.username.errors, 'danger')
-        if self.password.errors:
-            flash(self.password.label)
-            flash(self.password.errors, 'danger')
-        if self.email.errors:
-            flash(self.email.label)
-            flash(self.email.errors, 'danger')
-        if self.ctrl_access_level.errors:
-            flash(self.ctrl_access_level.label)
-            flash(self.ctrl_access_level.errors, 'danger')
-        if self.ctrl_last_login.errors:
-            flash(self.ctrl_last_login.label)
-            flash(self.ctrl_last_login.errors, 'danger')
-        if self.ctrl_active.errors:
-            flash(self.ctrl_active.label)
-            flash(self.ctrl_active.errors, 'danger')
-        if self.activation_token.errors:
-            flash(self.activation_token.label)
-            flash(self.activation_token.errors, 'danger')
-        if self.ctrl_failed_logins.errors:
-            flash(self.ctrl_failed_logins.label)
-            flash(self.ctrl_failed_logins.errors, 'danger')
-        if self.ctrl_locked.errors:
-            flash(self.ctrl_locked.label)
-            flash(self.ctrl_locked.errors, 'danger')
-        if self.ctrl_authenticated.errors:
-            flash(self.ctrl_authenticated.label)
-            flash(self.ctrl_authenticated.errors, 'danger')
-
-
-class LoginForm(FlaskForm):
+class LoginForm(CustomForm):
     username = StringField('Benutzername', validators=[DataRequired()])
     password = PasswordField('Passwort', validators=[DataRequired()])
     submit = SubmitField('Einloggen')
 
-    def get_error_messages(self):
-        if self.username.errors:
-            flash(self.username.errors, 'danger')
-        if self.password.errors:
-            flash(self.password.errors, 'danger')
 
-
-class AddUserForm(FlaskForm):
+class AddUserForm(CustomForm):
     username = StringField('Benutzername', validators=[DataRequired(), Length(min=4, max=30)])
     password = PasswordField('Passwort', validators=[DataRequired(), EqualTo('password2', message='Passwörter müssen übereinstimmen')])
     password2 = PasswordField('Passwort wiederholen', validators=[DataRequired()])
@@ -87,7 +94,7 @@ class AddUserForm(FlaskForm):
     submit = SubmitField('Registrieren')
 
 
-class EditUserForm(FlaskForm):
+class EditUserForm(CustomForm):
     username = StringField('Benutzername', validators=[DataRequired(), Length(min=4, max=30)])
     password = PasswordField('Passwort', validators=[EqualTo('password2', message='Passwörter müssen übereinstimmen')])
     password2 = PasswordField('Passwort wiederholen')
@@ -101,47 +108,3 @@ class EditUserForm(FlaskForm):
     ctrl_authenticated = BooleanField("Authentifiziert", false_values=('false', 'false'))
     user_password = PasswordField("Ihr Benutzerpasswort zur Authentifizierung", validators=[DataRequired(), Length(min=4, max=128)])
     submit = SubmitField('Benutzer aktualisieren')
-
-    def init_user_values(self, user):
-        self.username.data = user.get("username")
-        self.password.data = ""
-        self.email.data = user.get("email")
-        self.ctrl_access_level.data = user.get("ctrl_access_level")
-        self.ctrl_last_login.data = user.get("ctrl_last_login")
-        self.ctrl_active.data = user.get("ctrl_active")
-        self.activation_token.data = user.get("activation_token")
-        self.ctrl_failed_logins.data = user.get("ctrl_failed_logins")
-        self.ctrl_locked.data = user.get("ctrl_locked")
-        self.ctrl_authenticated.data = user.get("ctrl_authenticated")
-
-    def get_error_messages(self):
-        if self.username.errors:
-            flash(self.username.label)
-            flash(self.username.errors, 'danger')
-        if self.password.errors:
-            flash(self.password.label)
-            flash(self.password.errors, 'danger')
-        if self.email.errors:
-            flash(self.email.label)
-            flash(self.email.errors, 'danger')
-        if self.ctrl_access_level.errors:
-            flash(self.ctrl_access_level.label)
-            flash(self.ctrl_access_level.errors, 'danger')
-        if self.ctrl_last_login.errors:
-            flash(self.ctrl_last_login.label)
-            flash(self.ctrl_last_login.errors, 'danger')
-        if self.ctrl_active.errors:
-            flash(self.ctrl_active.label)
-            flash(self.ctrl_active.errors, 'danger')
-        if self.activation_token.errors:
-            flash(self.activation_token.label)
-            flash(self.activation_token.errors, 'danger')
-        if self.ctrl_failed_logins.errors:
-            flash(self.ctrl_failed_logins.label)
-            flash(self.ctrl_failed_logins.errors, 'danger')
-        if self.ctrl_locked.errors:
-            flash(self.ctrl_locked.label)
-            flash(self.ctrl_locked.errors, 'danger')
-        if self.ctrl_authenticated.errors:
-            flash(self.ctrl_authenticated.label)
-            flash(self.ctrl_authenticated.errors, 'danger')

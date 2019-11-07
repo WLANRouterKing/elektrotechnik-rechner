@@ -33,6 +33,17 @@ nav.Bar('main', [
     ])
 ])
 
+pages = ["page1", "page2"]
+
+
+@backend.route("/<requested_page>", methods=["GET", "POST"])
+def page(requested_page):
+    for page in pages:
+        if page == requested_page:
+            return requested_page
+    return page
+
+
 """
 login endpunkt
 """
@@ -40,7 +51,7 @@ login endpunkt
 
 @backend.route("/login", methods=["GET", "POST"])
 def login():
-    form = LoginForm(request.form)
+    form = LoginForm()
     if request.method == "POST":
         if form.validate_on_submit():
             be_user = BeUser()
@@ -71,7 +82,7 @@ account editieren
 @login_required
 def account_settings():
     user = current_user
-    form = EditAccountForm(request.form)
+    form = EditAccountForm()
     if user.get_id():
         form.init_user_values(user)
     if request.method == "POST":
@@ -83,10 +94,12 @@ def account_settings():
                     new_user = BeUser()
                     new_user.set("id", user.get_id())
                     new_user.load()
-                    logout_user()
-                    login_user(new_user)
-                    flash("Accountdaten erfolgreich aktualisiert", "success")
-                    return redirect(url_for("backend.account_edit"))
+                    if logout_user():
+                        if login_user(new_user):
+                            flash("Accountdaten erfolgreich aktualisiert", "success")
+                            return redirect(url_for("backend.account_edit"))
+
+                    return redirect(url_for("backend.logout"))
                 else:
                     flash("Accountdaten konnten nicht aktualisiert werden")
     return render_template("/backend/account_edit.html", form=form)
@@ -153,6 +166,40 @@ def be_user_edit(user_id):
         return render_template("backend/edit_user.html", form=form, user=user)
     else:
         return redirect(url_for("backend.dashboard"))
+
+
+"""
+benutzer hinzufügen
+"""
+
+
+@backend.route("/register", methods=["GET", "POST"])
+def register():
+    form = AddUserForm(request.form)
+    if True:
+        if request.method == "POST" and form.validate_on_submit():
+            be_user = BeUser()
+            username = escape(request.form["username"])
+            password = escape(request.form["password"])
+            email = escape(request.form["email"])
+            token = be_user.generate_activation_token()
+            password = be_user.hash_password(password)
+            ctrl_access_level = int(request.form["ctrl_access_level"])
+            be_user.set("username", username)
+            be_user.set("password", password)
+            be_user.set("email", email)
+            be_user.set("activation_token", token)
+            be_user.set("ctrl_access_level", ctrl_access_level)
+            print(be_user.get("email"))
+            if validate_email(be_user.get("email")):
+                print("valid email")
+                if be_user.register():
+                    flash("Der Benutzer wurde erfolgreich hinzugefügt", 'success')
+                else:
+                    flash("Der Benutzer konnte nicht erstellt werden", 'danger')
+            flash("Diese E-Mail Adresse scheint nicht zu existieren")
+    # flash("Du hast nicht die benötigten Rechte", 'danger')
+    return render_template("backend/add_user.html", form=form)
 
 
 """
