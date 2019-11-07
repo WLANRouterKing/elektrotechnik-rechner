@@ -124,6 +124,10 @@ class BeUser(Database):
         return self.get_as_int("ctrl_access_level") == 1
 
     @property
+    def is_active(self):
+        return bool(self.get_ctrl_active())
+
+    @property
     def is_locked(self):
         return bool(self.get_ctrl_locked())
 
@@ -208,7 +212,7 @@ class BeUser(Database):
                     self.set_ctrl_locked(0)
                     self.set_ctrl_lockout_time(None)
                     self.set_ctrl_failed_logins(0)
-        if self.exists:
+        if self.exists and not self.is_locked and self.is_active:
             stored_password = self.get_password()
             if self.encryption.validate_hash(stored_password, password):
                 self.set_ctrl_last_login(datetime_now)

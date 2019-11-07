@@ -3,54 +3,7 @@
 {% block account_edit %}
     <div class="col-lg-4">
         <form id="register-form" method="post" action="{{ url_for('backend.account_edit') }}">
-            {{ form.csrf_token }}
-
-            <div class="form-group">
-                {{ form.username.label }}
-                {{ form.username(class_="form-control") }}
-            </div>
-
-            <div class="form-group">
-                {{ form.email.label }}
-                {{ form.email(class_="form-control") }}
-            </div>
-            <div class="form-row">
-                <div class="form-group form-inline col-md-4">
-                    {{ form.ctrl_active(class_="form-control") }}
-                    {{ form.ctrl_active.label }}
-                </div>
-                <div class="form-group form-inline col-md-4">
-                    {{ form.ctrl_locked(class_="form-control") }}
-                    {{ form.ctrl_locked.label }}
-                </div>
-                <div class="form-group form-inline col-md-4">
-                    {{ form.ctrl_authenticated(class_="form-control") }}
-                    {{ form.ctrl_authenticated.label }}
-                </div>
-            </div>
-            {% if current_user.is_admin %}
-                <div class="form-group">
-                    {{ form.ctrl_access_level.label }}
-                    {{ form.ctrl_access_level(class_="form-control") }}
-                </div>
-            {% endif %}
-            <div class="form-group">
-                {{ form.ctrl_last_login.label }}
-                {{ form.ctrl_last_login(class_="form-control") }}
-            </div>
-            <div class="form-group">
-                {{ form.activation_token.label }}
-                {{ form.activation_token(class_="form-control") }}
-            </div>
-            <div class="form-group">
-                {{ form.ctrl_failed_logins.label }}
-                {{ form.ctrl_failed_logins(class_="form-control") }}
-            </div>
-            <div class="form-group">
-                {{ form.user_password.label }}
-                {{ form.user_password(class_="form-control") }}
-            </div>
-            {{ form.submit(class_="btn btn-dark") }}
+            {{ form_helper.render_form(form) }}
         </form>
     </div>
 {% endblock %}

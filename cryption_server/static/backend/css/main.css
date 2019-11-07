@@ -32,7 +32,6 @@ h1, h2, h3, h4, h5, h6, strong {
     font-family: "Open Sans";
     font-style: normal;
     font-weight: 600;
-    font-size: 22px;
     text-transform: uppercase;
 }
 
@@ -40,7 +39,6 @@ p, span, a {
     font-family: "Open Sans";
     font-style: normal;
     font-weight: 400;
-    font-size: 18px;
 }
 
 table {
@@ -65,6 +63,7 @@ td.remove {
     max-width: 100%;
     height: auto;
     padding: 15px;
+    border-bottom: 1px solid #212529;
 }
 
 #status-bar span {
@@ -75,6 +74,7 @@ td.remove {
     max-width: 100%;
     height: auto;
     overflow: hidden;
+    padding-top: 50px;
 }
 
 .alert {
@@ -100,4 +100,8 @@ td.remove {
 .link-back {
     margin-top: 35px;
     margin-bottom: 35px;
+}
+
+.form-inline label {
+    margin-left: 15px;
 }

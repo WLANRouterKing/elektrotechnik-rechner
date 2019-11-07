@@ -21,7 +21,7 @@
                     <th scope="row">{{ user.get_id() }}</th>
                     <td>{{ user.get_username() }}</td>
                     <td>{{ user.get_ctrl_last_login() }}</td>
-                    <td>{{ user.get_ctrl_logout_time() }}</td>
+                    <td>{{ user.get_ctrl_lockout_time() }}</td>
                     <td class="signal"><i
                             class="material-icons">{{ 'check_circle' if user.get_activation_token() else 'error' }}</i>
                     </td>

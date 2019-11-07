@@ -1,3 +1,4 @@
+{% import 'backend/_helpers.html' as form_helper with context %}
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -55,6 +56,18 @@
     {% block status_bar %}
     {% endblock %}
 </div>
+
+{% block flashed_messages %}
+    <div class="container-fluid">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+{% endblock %}
 
 <div id="content">
     {% block content %}

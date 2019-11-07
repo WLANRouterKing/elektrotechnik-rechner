@@ -30,8 +30,6 @@ def create_app():
     login_manager.init_app(app)
     login_manager.session_protection = "strong"
     login_manager.refresh_view = "backend.login"
-    login_manager.needs_refresh_message = u"To protect your account, please reauthenticate to access this page."
-    login_manager.needs_refresh_message_category = "info"
 
     mail.init_app(app)
     nav.init_app(app)

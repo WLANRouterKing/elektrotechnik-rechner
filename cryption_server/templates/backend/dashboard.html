@@ -6,24 +6,18 @@
 
 {% block status_bar %}
 
-    {% if current_user %}
-        {% if current_user.is_authenticated %}
-            <span>Hi {{ current_user.username }}!</span>
-            <span>Letzter Login: {{ current_user.last_login }}</span>
+    <div class="container-fluid">
+        {% if current_user %}
+            {% if current_user.is_authenticated %}
+                <span>Eingeloggt als {{ current_user.username }}</span>
+                <span>Letzter Login {{ current_user.last_login }}</span>
+            {% endif %}
         {% endif %}
-    {% endif %}
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
+    </div>
 {% endblock %}
 
 {% block content %}
+
     <div class="container-fluid">
         {% block be_users_list %}
         {% endblock %}

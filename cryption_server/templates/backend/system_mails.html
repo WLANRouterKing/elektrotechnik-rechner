@@ -1,7 +1,7 @@
 {% extends "backend/dashboard.html" %}
 
 {% block system_mail_list %}
-    {% if system_mails.items %}
+    {% if system_mails %}
         <table class="table table-striped table-dark col-lg-12 ">
             <thead>
             <th scope="col">Id</th>
@@ -12,6 +12,7 @@
             <th scope="col">Zeitpunkt</th>
             </thead>
             <tbody>
+
             {% for system_mail in system_mails %}
                 <tr>
                     <th scope="row">{{ system_mail.get_id() }}</th>

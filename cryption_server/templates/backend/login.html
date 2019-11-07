@@ -8,23 +8,15 @@
 {% endblock %}
 {% block logout %}
 {% endblock %}
+{% block flashed_messages %}
+{% endblock %}
 
 {% block content %}
 
     <div id="login-container">
         <h2>Login</h2>
         <form id="login-form" method="post" action="{{ url_for('backend.login') }}">
-            {{ form.csrf_token }}
-            <div class="form-group">
-                {{ form.username.label }}
-                {{ form.username(class_="form-control") }}
-            </div>
-            <div class="form-group">
-                {{ form.password.label }}
-                {{ form.password(class_="form-control") }}
-            </div>
-
-            {{ form.submit(class_="btn btn-dark") }}
+            {{ form_helper.render_form(form) }}
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}

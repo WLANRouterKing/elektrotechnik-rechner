@@ -381,16 +381,11 @@ class Database:
 
     def prepare_form_input(self, form_request):
         for key in form_request:
-            for admin_column in self.column_admin_rights:
-                if key not in self.filter_from_form_prepare:
-                    data = escape(form_request[key])
-                    if data == 'y':
-                        data = 1
-                    if key == admin_column:
-                        if self.is_admin:
-                            self.set(key, data)
-                    else:
-                        self.set(key, data)
+            if key not in self.filter_from_form_prepare:
+                data = escape(form_request[key])
+                if data == 'y':
+                    data = 1
+                    self.set(key, data)
 
     def load(self):
         """
@@ -749,32 +744,41 @@ class Session(Database):
     def session_exists(self):
         return self.create_instance_by("user_id")
 
+    def is_authenticated(self):
+        return bool(self.get_is_authenticated())
+
     def get_session_hash_string(self):
         token = str(self.get_token())
-        timestmap = str(self.get_timestamp().strftime("%d.%m.%Y %H:%M"))
+        timestamp = str(self.get_timestamp().strftime("%d.%m.%Y %H:%M"))
         user_id = str(self.get_user_id())
         user_agent = str(self.get_user_agent())
         ip_address = str(self.get_ip_address())
-        return "{0}{1}{2}{3}{4}".format(token, timestmap, user_id, user_agent, ip_address)
+        return "{0}{1}{2}{3}{4}".format(token, timestamp, user_id, user_agent, ip_address)
 
     def create_session_hash(self):
         return self.encryption.get_generic_hash(self.get_session_hash_string())
 
     def is_valid(self):
-        hash = self.encryption.get_generic_hash(self.get_session_hash_string())
-        if sodium_memcmp(bytes(hash), bytes(self.get_hash(), encoding="utf-8")):
-            print("session is valid")
-            return True
+        datetime_now = datetime.now()
+        session_time = self.get_timestamp()
+        difference = datetime_now.timestamp() - session_time.timestamp()
+        difference_minute = difference / 60
+        print(difference_minute)
+        if difference_minute <= 5:
+            my_logger.log(10, """Session mit der User ID {0} ist noch nicht abgelaufen""".format(self.get_user_id()))
+            hash = self.encryption.get_generic_hash(self.get_session_hash_string())
+            if sodium_memcmp(bytes(hash), bytes(self.get_hash(), encoding="utf-8")):
+                my_logger.log(10, """Session mit der User ID {0} ist valid""".format(self.get_user_id()))
+                return True
+        my_logger.log(10, """Session abgelaufen. User mit der ID {0} muss ausgeloggt werden.""".format(self.get_user_id()))
         return False
-
-    def is_authenticated(self):
-        return bool(self.get_is_authenticated())
 
 
 class SystemMail(Database):
 
     def __init__(self):
         super().__init__()
+        self.put_into_trash = False
         self.table_name = "system_mail"
         self.set_sender(current_app.config["MAIL_DEFAULT_SENDER"])
 

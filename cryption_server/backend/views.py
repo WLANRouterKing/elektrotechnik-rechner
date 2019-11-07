@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from datetime import datetime
 from flask import render_template, request, flash, redirect, url_for, escape, abort
 from validate_email import validate_email
 from cryption_server.models import SystemMail, Session
@@ -8,50 +7,19 @@ from . import backend
 from .models import BeUser, FailedLoginRecord
 from .forms import LoginForm, AddUserForm, EditUserForm, EditAccountForm
 from flask_login import login_user, current_user, login_required, logout_user
-from cryption_server import login_manager, nav, my_logger
-
-"""
- hauptnavigation
-"""
-nav.Bar('main', [
-    nav.Item('Dashboard', 'backend.dashboard'),
-    nav.Item('Backend Benutzer', '', items=[
-        nav.Item('Übersicht', 'backend.be_user'),
-        nav.Item('Benutzer hinzufügen', 'backend.be_user_add')
-    ]),
-    nav.Item('Benutzer', 'backend.user', items=[
-        nav.Item('Benutzer hinzufügen', 'backend.user_add')
-    ]),
-    nav.Item('System', '', items=[
-        nav.Item("Fehlgeschlagene Login Versuche", 'backend.failed_login_records'),
-        nav.Item("System Mails", 'backend.system_mails'),
-        nav.Item('Reports', 'backend.reports')
-    ]),
-    nav.Item('Account', '', items=[
-        nav.Item("Account bearbeiten", 'backend.account_edit'),
-        nav.Item("Account Einstellungen", 'backend.account_settings'),
-        nav.Item('Logout', 'backend.logout')
-    ])
-])
-
-pages = ["page1", "page2"]
-
-
-@backend.route("/<requested_page>", methods=["GET", "POST"])
-def page(requested_page):
-    for page in pages:
-        if page == requested_page:
-            return requested_page
-    return page
-
-
-"""
-login endpunkt
-"""
+from cryption_server import login_manager, my_logger
+from .nav import create_nav
 
 
 @backend.route("/login", methods=["GET", "POST"])
 def login():
+    """
+    Login Endpunkt
+
+    Returns:
+        Rendert das Login Template oder leitet an das Dashboard weiter nach erfolgreichem Login
+
+    """
     form = LoginForm()
     if request.method == "POST":
         if form.validate_on_submit():
@@ -83,19 +51,19 @@ def login():
                 failed_login_record.set("username", be_user.get("username"))
                 failed_login_record.set("ip_address", be_user.ip_address)
                 failed_login_record.save()
-        else:
-            form.get_error_messages()
     return render_template("/backend/login.html", form=form)
-
-
-"""
-account editieren
-"""
 
 
 @backend.route("/account/settings", methods=["GET", "POST"])
 @login_required
 def account_settings():
+    """
+    Account Settings Endpunkt
+
+    Returns:
+
+
+    """
     user = current_user
     form = EditAccountForm()
     if user.get_id():
@@ -159,6 +127,14 @@ benutzer editieren
 @backend.route("/be_user/edit_user/<int:user_id>", methods=["GET", "POST"])
 @login_required
 def be_user_edit(user_id):
+    """
+
+    Args:
+        user_id:
+
+    Returns:
+
+    """
     form = EditUserForm()
     user = BeUser()
     if user_id > 0:
@@ -327,6 +303,12 @@ dashboard ansicht
 @backend.route("/dashboard", methods=["GET"])
 @login_required
 def dashboard():
+    """
+     hauptnavigation
+
+    """
+    # erstellt die navigation in bezug auf die benutzerrechte
+    create_nav()
     return render_template("/backend/dashboard.html")
 
 
@@ -349,7 +331,8 @@ def load_user(user_id):
             if session.is_valid():
                 session_user = user.create_session_user()
                 return session_user
-
+            else:
+                session.delete()
     return None
 
 
