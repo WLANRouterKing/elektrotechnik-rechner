@@ -1,15 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+from datetime import datetime
 from re import search
 import mysql.connector
 import copy
-from flask import jsonify, current_app, url_for, flash
+from flask import jsonify, current_app, url_for, flash, escape
 import nacl.utils
 import nacl.secret
 import nacl.encoding
 import nacl.pwhash
 from flask_login import current_user
-from nacl import encoding
+from nacl import encoding, hash
+from nacl.bindings import sodium_memcmp
 from nacl.public import PrivateKey
 from cryption_server import Mail
 from flask_mail import Message
@@ -32,7 +34,7 @@ class Encryption:
             str: Den generierten Token
 
         """
-        return nacl.utils.random(length)
+        return self.bin_2_hex(nacl.utils.random(length))
 
     def bin_2_hex(self, value):
         """
@@ -89,6 +91,10 @@ class Encryption:
         Returns:
             str: Der verschlüsselte String oder der übergebene String wenn die Verschlüsselung fehlgeschlagen ist
         """
+
+        if data == "" or data is None:
+            return ""
+
         try:
             box = nacl.secret.SecretBox(self.get_sym_key())
             data_encrypted = box.encrypt(bytes(data, encoding="utf-8"), nonce=None, encoder=encoding.Base64Encoder)
@@ -111,6 +117,10 @@ class Encryption:
             Ansonsten wird der übergebene String zurück gegeben
 
         """
+
+        if data == "" or data is None:
+            return ""
+
         try:
             box = nacl.secret.SecretBox(self.get_sym_key())
             data_decrypted = box.decrypt(bytes(data, encoding="utf-8"), nonce=None, encoder=encoding.Base64Encoder)
@@ -180,6 +190,10 @@ class Encryption:
         key_pair.set_public_key(public_key)
         return key_pair
 
+    def get_generic_hash(self, string):
+        hasher = nacl.hash.sha512
+        return hasher(bytes(string, encoding="utf-8"), encoder=nacl.encoding.HexEncoder)
+
 
 class Database:
     """
@@ -194,6 +208,7 @@ class Database:
         Setzt die Default Werte der Klasse
 
         """
+        self.encrypt = False
         self.connection = None
         self.encryption = Encryption()
         self.class_label = ""
@@ -203,15 +218,6 @@ class Database:
         self.exclude_from_encryption = ["id", "password", "username", "user_id", "ctrl"]
         self.column_admin_rights = ["ctrl_access_level"]
         self.filter_from_form_prepare = ["csrf_token", "user_password", "submit"]
-
-    def __del__(self):
-        """
-
-        Klassen Destruktor
-        Schließt die Datenbankverbindung
-
-        """
-        self.close_connection()
 
     def get(self, key):
         """
@@ -268,6 +274,62 @@ class Database:
             user_id = 0
         return int(user_id)
 
+    def get_username(self):
+        """
+
+        Returns:
+            str: Den Benutzernamen
+        """
+        return self.get("username")
+
+    def get_user_agent(self):
+        self.get("user_agent")
+
+    def get_ctrl_time(self):
+        return self.get("ctrl_time")
+
+    def get_eid(self):
+        return self.get("eid")
+
+    def get_custom_eid(self):
+        return self.get("custom_eid")
+
+    def get_title(self):
+        return self.get("title")
+
+    def get_ctrl_deleted(self):
+        return self.get("ctrl_deleted")
+
+    def get_ip_address(self):
+        return self.get("ip_address")
+
+    def set_id(self, value):
+        self.set("id", value)
+
+    def set_user_id(self, value):
+        self.set("user_id", value)
+
+    def set_ctrl_time(self, value):
+        self.set("ctrl_time", value)
+
+    def set_eid(self, value):
+        self.set("eid", value)
+
+    def set_custom_eid(self, value):
+        self.set("custom_eid", value)
+
+    def set_title(self, value):
+        self.set("title", value)
+
+    def set_ctrl_deleted(self, value):
+        self.set("ctrl_deleted", value)
+
+    def set_ip_address(self, value):
+        return self.set("ip_address", value)
+
+    def set_user_agent(self, value):
+        self.set("user_agent", value)
+
     def get_as_int(self, key):
         """
         Liefert einen Integer Wert für einen Schlüssel
@@ -284,7 +346,7 @@ class Database:
             return integer
         return 0
 
-    def create_connection(self):
+    def get_connection(self):
         """
         Erstellt und öffnet anhand der Config eine Datenbankverbindung
 
@@ -295,21 +357,14 @@ class Database:
         database = current_app.config["DATABASE_NAME"]
         user = current_app.config["DATABASE_USER"]
         password = current_app.config["DATABASE_PASSWORD"]
-        self.connection = mysql.connector.connect(host=host, database=database, user=user, password=password)
 
-    def get_connection(self):
-        """
-        Gibt die Datenbankverbindung zurück
+        if self.connection is None or not self.connection.is_connected():
+            self.connection = mysql.connector.connect(host=host, database=database, user=user, password=password)
 
-        Returns:
-            MySQLConnection: Die Datenbankverbindung
-
-        """
-        if self.connection is None:
-            self.create_connection()
         return self.connection
 
-    def close_connection(self):
+    def close_connection(self, cursor):
+
         """
         Schließt die Datenbankverbindung insofern diese Verbunden ist
 
@@ -318,10 +373,24 @@ class Database:
 
         """
         if self.connection is not None:
+            cursor.close()
             if self.connection.is_connected():
                 self.connection.close()
                 return True
         return False
+
+    def prepare_form_input(self, form_request):
+        for key in form_request:
+            for admin_column in self.column_admin_rights:
+                if key not in self.filter_from_form_prepare:
+                    data = escape(form_request[key])
+                    if data == 'y':
+                        data = 1
+                    if key == admin_column:
+                        if self.is_admin:
+                            self.set(key, data)
+                    else:
+                        self.set(key, data)
 
     def load(self):
         """
@@ -364,6 +433,8 @@ class Database:
                 return True
         except Exception as error:
             my_logger.log(10, error)
+        finally:
+            self.close_connection(cursor)
 
         return False
 
@@ -381,6 +452,7 @@ class Database:
         """
         connection = self.get_connection()
         cursor = connection.cursor(prepared=True)
+        success = False
         try:
             table = self.table_name
             id = self.get("id")
@@ -407,14 +479,13 @@ class Database:
             values = list(data.values())
             sql = """UPDATE {0} SET {1} WHERE id = %s """.format(table, update_string)
             cursor.execute(sql, values)
-            rows = cursor.rowcount
             connection.commit()
-            if rows > 0:
-                return True
+            success = True
         except Exception as error:
-            my_logger.log(10, error)
-
-        return False
+            success = False
+        finally:
+            self.close_connection(cursor)
+        return success
 
     def insert(self):
         """
@@ -445,6 +516,8 @@ class Database:
                 return row
         except Exception as error:
             my_logger.log(10, error)
+        finally:
+            self.close_connection(cursor)
 
         return False
 
@@ -480,16 +553,19 @@ class Database:
                     sql = """DELETE FROM {0} WHERE id = %s;""".format(table)
                 cursor.execute(sql, [id])
                 connection.commit()
-                row = cursor.lastrowid
+                row = cursor.rowcount
+                if self.table_name != "session":
+                    if row > 0 and not self.put_into_trash:
+                        flash("""{0} mit der ID {1} erfolgreich gelöscht""".format(self.class_label, id), "success")
+                    elif row <= 0 and not self.put_into_trash:
+                        flash("""{0} mit der ID {1} konnte nicht gelöscht werden""".format(self.class_label, id), "danger")
 
-                if row > 0 and not self.put_into_trash:
-                    flash("""{0} mit der ID {1} erfolgreich gelöscht""".format(self.class_label, id), "success")
-                elif row <= 0 and not self.put_into_trash:
-                    flash("""{0} mit der ID {1} konnte nicht gelöscht werden""".format(self.class_label, id), "danger")
                 if row > 0:
                     success = True
             except Exception as error:
                 my_logger.log(10, error)
+            finally:
+                self.close_connection(cursor)
 
         return success
 
@@ -505,7 +581,7 @@ class Database:
 
         """
         connection = self.get_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(prepared=True)
         self.list = list()
         try:
             table = self.table_name
@@ -525,6 +601,8 @@ class Database:
                     self.list.append(row[0])
         except Exception as error:
             my_logger.log(10, error)
+        finally:
+            self.close_connection(cursor)
 
         return self.list
 
@@ -547,7 +625,7 @@ class Database:
             for exclude in self.exclude_from_encryption:
                 if search(exclude, key) is not None:
                     key_encryptable = False
-            if key_encryptable:
+            if key_encryptable and self.encrypt:
                 data[key] = self.encryption.encrypt(value)
             else:
                 data[key] = value
@@ -559,7 +637,7 @@ class Database:
             for exclude in self.exclude_from_encryption:
                 if search(exclude, key) is not None:
                     key_decryptable = False
-            if key_decryptable:
+            if key_decryptable and self.encrypt:
                 self.set(key, self.encryption.decrypt(self.get(key)))
 
     """
@@ -572,7 +650,11 @@ class Database:
         if self.get_id() > 0:
             return self.update()
         else:
-            return self.insert()
+            id = self.insert()
+            if id > 0:
+                self.set("id", id)
+                return True
+            return False
 
     def get_json_response(self):
         return jsonify(self.arrData)
@@ -599,8 +681,12 @@ class Database:
             rows = cursor.fetchone()
         except Exception as error:
             my_logger.log(10, error)
+        finally:
+            self.close_connection(cursor)
+
         if rows is not None:
             id = rows[0]
+            print(id)
             if id > 0:
                 self.set("id", id)
                 self.load()
@@ -618,9 +704,71 @@ class Database:
             rows = cursor.fetchone()
         except Exception as error:
             my_logger.log(10, error)
+        finally:
+            self.close_connection(cursor)
         if rows is not None:
             return rows[0]
         return 0
+
+
+class Session(Database):
+
+    def __init__(self):
+        super().__init__()
+        self.table_name = "session"
+        self.put_into_trash = False
+
+    def get_token(self):
+        return self.get("token")
+
+    def get_timestamp(self):
+        return self.get("timestamp")
+
+    def get_hash(self):
+        return self.get("hash")
+
+    def get_is_authenticated(self):
+        return self.get("ctrl_authenticated")
+
+    def set_is_authenticated(self, value):
+        self.set("ctrl_authenticated", value)
+
+    def set_token(self, value):
+        self.set("token", value)
+
+    def set_timestamp(self, value):
+        self.set("timestamp", value)
+
+    def get_timestamp_as_str(self):
+        date = self.get_timestamp()
+        return date.strftime("%d.%m.%Y %H:%M")
+
+    def set_hash(self, value):
+        self.set("hash", value)
+
+    def session_exists(self):
+        return self.create_instance_by("user_id")
+
+    def get_session_hash_string(self):
+        token = str(self.get_token())
+        timestmap = str(self.get_timestamp().strftime("%d.%m.%Y %H:%M"))
+        user_id = str(self.get_user_id())
+        user_agent = str(self.get_user_agent())
+        ip_address = str(self.get_ip_address())
+        return "{0}{1}{2}{3}{4}".format(token, timestmap, user_id, user_agent, ip_address)
+
+    def create_session_hash(self):
+        return self.encryption.get_generic_hash(self.get_session_hash_string())
+
+    def is_valid(self):
+        hash = self.encryption.get_generic_hash(self.get_session_hash_string())
+        if sodium_memcmp(bytes(hash), bytes(self.get_hash(), encoding="utf-8")):
+            print("session is valid")
+            return True
+        return False
+
+    def is_authenticated(self):
+        return bool(self.get_is_authenticated())
 
 
 class SystemMail(Database):
@@ -723,6 +871,7 @@ class KeyPair(Database):
     def __init__(self):
         super().__init__()
         self.table_name = "keypair"
+        self.put_into_trash = False
 
     def get_private_key(self):
         return self.get("private_key")
@@ -750,39 +899,40 @@ class Trash(Database):
     def get_item_table(self):
         return self.get("item_table")
 
-    def get_time(self):
-        return self.get("ctrl_time")
-
     def recover(self):
-        with self.get_connection() as connection:
-            with connection.cursor() as cursor:
-                row = 0
-                try:
-                    item_id = self.get("item_id")
-                    item_table = self.get("item_table")
-                    sql = """UPDATE {0} SET ctrl_deleted = 0 WHERE id = %s""".format(item_table)
-                    cursor.execute(sql, item_id)
-                    connection.commit()
-                    row = cursor.lastrowid
-                except Exception as error:
-                    my_logger.log(10, error)
-                if row > 0:
-                    return self.delete()
+        connection = self.get_connection()
+        cursor = connection.cursor(prepared=True)
+        row = 0
+        try:
+            item_id = self.get_item_id()
+            item_table = self.get_item_table()
+            sql = """UPDATE {0} SET ctrl_deleted = 0 WHERE id = %s""".format(item_table)
+            cursor.execute(sql, item_id)
+            connection.commit()
+            row = cursor.lastrowid
+        except Exception as error:
+            my_logger.log(10, error)
+        finally:
+            self.close_connection(cursor)
+        if row > 0:
+            return self.delete()
         return False
 
     def delete_final(self):
         connection = self.get_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(prepared=True)
         row = 0
         try:
-            item_id = self.get("item_id")
-            item_table = self.get("item_table")
+            item_id = self.get_item_id()
+            item_table = self.get_item_table()
             sql = """DELETE FROM {0} WHERE id = %s""".format(item_table)
             cursor.execute(sql, item_id)
             connection.commit()
             row = cursor.lastrowid
         except Exception as error:
             my_logger.log(10, error)
+        finally:
+            self.close_connection(cursor)
         if row > 0:
             return self.delete()
         return False

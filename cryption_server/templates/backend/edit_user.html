@@ -24,10 +24,6 @@
                     {{ form.ctrl_locked(class_="form-control") }}
                     {{ form.ctrl_locked.label }}
                 </div>
-                <div class="form-group form-inline col-md-4">
-                    {{ form.ctrl_authenticated(class_="form-control") }}
-                    {{ form.ctrl_authenticated.label }}
-                </div>
             </div>
             {% if current_user.is_admin %}
                 <div class="form-group">
@@ -52,13 +48,6 @@
                 {{ form.user_password(class_="form-control") }}
             </div>
             {{ form.submit(class_="btn btn-dark") }}
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
         </form>
     {% endif %}
 </div>

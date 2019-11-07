@@ -15,11 +15,11 @@
             {% for system_mail in system_mails %}
                 <tr>
                     <th scope="row">{{ system_mail.get_id() }}</th>
-                    <td>{{ system_mail.get('receiver') }}</td>
-                    <td>{{ system_mail.get('sender') }}</td>
-                    <td>{{ system_mail.get('subject') }}</td>
-                    <td>{{ system_mail.get('message')|safe }}</td>
-                    <td>{{ system_mail.get('time') }}</td>
+                    <td>{{ system_mail.get_receiver() }}</td>
+                    <td>{{ system_mail.get_sender() }}</td>
+                    <td>{{ system_mail.get_subject() }}</td>
+                    <td>{{ system_mail.get_message()|safe }}</td>
+                    <td>{{ system_mail.get_time() }}</td>
                     {% if current_user.is_admin %}
                         <td class="remove"><i class="material-icons">delete</i></td>
                     {% endif %}

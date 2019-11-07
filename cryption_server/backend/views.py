@@ -1,13 +1,14 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+from datetime import datetime
 from flask import render_template, request, flash, redirect, url_for, escape, abort
 from validate_email import validate_email
-from cryption_server.models import SystemMail
+from cryption_server.models import SystemMail, Session
 from . import backend
 from .models import BeUser, FailedLoginRecord
 from .forms import LoginForm, AddUserForm, EditUserForm, EditAccountForm
 from flask_login import login_user, current_user, login_required, logout_user
-from cryption_server import login_manager, nav
+from cryption_server import login_manager, nav, my_logger
 
 """
  hauptnavigation
@@ -57,11 +58,25 @@ def login():
             be_user = BeUser()
             be_user.set("username", escape(request.form["username"]))
             be_user.temp_password = escape(request.form["password"])
-            be_user.ip_address = escape(request.remote_addr)
             if be_user.validate_login():
-                session_user = be_user.create_session_user()
-                login_user(session_user)
-                return redirect(url_for("backend.dashboard"))
+                be_user.load()
+                session = Session()
+                session.set_user_id(be_user.get_id())
+                if session.session_exists():
+                    session.delete()
+                    session = Session()
+                    session.set_user_id(be_user.get_id())
+
+                session.set_ip_address(escape(request.remote_addr))
+                session.set_user_agent(escape(request.user_agent))
+                session.set_token(session.encryption.create_random_token(32))
+                session.set_timestamp(be_user.get_ctrl_last_login())
+                session.set_hash(session.create_session_hash())
+                if session.save() is not False:
+                    session_user = be_user.create_session_user()
+                    if login_user(session_user):
+                        my_logger.log(10, "User mit der ID {0} eingeloggt".format(session_user.get_id()))
+                        return redirect(url_for("backend.dashboard"))
             else:
                 failed_login_record = FailedLoginRecord()
                 failed_login_record.set("user_id", be_user.get_id())
@@ -84,7 +99,7 @@ def account_settings():
     user = current_user
     form = EditAccountForm()
     if user.get_id():
-        form.init_user_values(user)
+        form.init_values(user)
     if request.method == "POST":
         if form.validate_on_submit():
             user.temp_password = escape(request.form["user_password"])
@@ -113,25 +128,26 @@ account editieren
 @backend.route("/account/edit", methods=["GET", "POST"])
 @login_required
 def account_edit():
-    user = current_user
+    user_id = current_user.get_id()
+    be_user = BeUser()
+    be_user.set_id(user_id)
+    be_user.load()
     form = EditAccountForm(request.form)
-    if user.get_id():
-        form.init_user_values(user)
+    if request.method == "GET":
+        form.init_values(be_user)
     if request.method == "POST":
         if form.validate_on_submit():
-            user.temp_password = escape(request.form["user_password"])
-            if user.encryption.validate_hash(user.get("password"), user.temp_password):
-                user.prepare_form_input(request.form)
-                if user.save():
-                    new_user = BeUser()
-                    new_user.set("id", user.get_id())
-                    new_user.load()
-                    logout_user()
-                    login_user(new_user)
+            be_user.temp_password = escape(request.form["user_password"])
+            if be_user.encryption.validate_hash(be_user.get("password"), be_user.temp_password):
+                be_user.prepare_form_input(request.form)
+                if be_user.save():
                     flash("Accountdaten erfolgreich aktualisiert", "success")
-                    return redirect(url_for("backend.account_edit"))
                 else:
                     flash("Accountdaten konnten nicht aktualisiert werden")
+            else:
+                flash("Sie haben ein falsches Passwort eingegeben", "danger")
+        else:
+            form.get_error_messages()
     return render_template("/backend/account_edit.html", form=form)
 
 
@@ -143,29 +159,31 @@ benutzer editieren
 @backend.route("/be_user/edit_user/<int:user_id>", methods=["GET", "POST"])
 @login_required
 def be_user_edit(user_id):
-    form = EditUserForm(request.form)
-    be_user = current_user
+    form = EditUserForm()
     user = BeUser()
-    if be_user.is_admin:
-        if user_id > 0:
-            user.set("id", user_id)
-            user.load()
-            form.init_user_values(user)
-        if request.method == "POST":
-            if form.validate_on_submit():
-                be_user.temp_password = escape(request.form["user_password"])
-                if be_user.encryption.validate_hash(be_user.get("password"), be_user.temp_password):
-                    if user.save():
-                        flash("Der Benutzer wurde erfolgreich aktualisiert", 'success')
-                    else:
-                        flash("Der Benutzer konnte nicht aktualisiert werden", 'danger')
+    if user_id > 0:
+        user.set("id", user_id)
+        user.load()
+    if request.method == "GET":
+        if current_user.is_admin:
+            form.init_values(user)
+    if request.method == "POST":
+        if form.validate_on_submit():
+            be_user = BeUser()
+            be_user.set_id(current_user.get_id())
+            be_user.load()
+            be_user.temp_password = escape(request.form["user_password"])
+            if be_user.encryption.validate_hash(be_user.get("password"), be_user.temp_password):
+                user.prepare_form_input(request.form)
+                if user.save():
+                    flash("Der Benutzer wurde erfolgreich aktualisiert", 'success')
                 else:
-                    flash("Sie haben ein falsches Passwort eingegeben", 'danger')
+                    flash("Der Benutzer konnte nicht aktualisiert werden", 'danger')
             else:
-                form.get_error_messages()
-        return render_template("backend/edit_user.html", form=form, user=user)
-    else:
-        return redirect(url_for("backend.dashboard"))
+                flash("Sie haben ein falsches Passwort eingegeben", 'danger')
+        else:
+            form.get_error_messages()
+    return render_template("backend/edit_user.html", form=form, user=user)
 
 
 """
@@ -190,15 +208,12 @@ def register():
             be_user.set("email", email)
             be_user.set("activation_token", token)
             be_user.set("ctrl_access_level", ctrl_access_level)
-            print(be_user.get("email"))
             if validate_email(be_user.get("email")):
-                print("valid email")
                 if be_user.register():
                     flash("Der Benutzer wurde erfolgreich hinzugefügt", 'success')
                 else:
                     flash("Der Benutzer konnte nicht erstellt werden", 'danger')
             flash("Diese E-Mail Adresse scheint nicht zu existieren")
-    # flash("Du hast nicht die benötigten Rechte", 'danger')
     return render_template("backend/add_user.html", form=form)
 
 
@@ -230,7 +245,8 @@ def be_user_add():
                     flash("Der Benutzer wurde erfolgreich hinzugefügt", 'success')
                 else:
                     flash("Der Benutzer konnte nicht erstellt werden", 'danger')
-            flash("Diese E-Mail Adresse scheint nicht zu existieren")
+            else:
+                flash("Diese E-Mail Adresse scheint nicht zu existieren")
         if form.username.errors:
             flash(form.username.errors, 'danger')
         if form.password.errors:
@@ -327,10 +343,14 @@ def load_user(user_id):
         user = BeUser()
         user.set("id", user_id)
         user.load()
-        session_user = user.create_session_user()
-        return session_user
-    else:
-        return None
+        session = Session()
+        session.set_user_id(user.get_id())
+        if session.session_exists():
+            if session.is_valid():
+                session_user = user.create_session_user()
+                return session_user
+
+    return None
 
 
 @backend.route("/be_user", methods=["GET"])
@@ -383,12 +403,12 @@ def user_activate(user_id, activation_token):
 @login_required
 def logout():
     user = current_user
-    be_user = BeUser()
-    be_user.set("id", user.id)
-    be_user.load()
-    be_user.set("ctrl_authenticated", 0)
-    be_user.save()
+    session = Session()
+    session.set_user_id(user.get_id())
+    session.load()
+    session.delete()
     if logout_user():
+        flash("Erfolgreich abgemeldet", "success")
         return redirect(url_for("backend.login"))
 
 

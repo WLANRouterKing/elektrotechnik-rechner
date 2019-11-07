@@ -28,9 +28,13 @@ class SessionUser(UserMixin):
     locked = False
     activation_token = False
     id = 0
+    token = ""
 
     def get_id(self):
         return self.id
+
+    def get_token(self):
+        return self.token
 
     @property
     def is_locked(self):
@@ -68,7 +72,6 @@ class SessionUser(UserMixin):
         id = be_user.get_as_int("id")
         ctrl_access_level = be_user.get_as_int("ctrl_access_level")
         ctrl_active = be_user.get_as_int("ctrl_active")
-        ctrl_authenticated = be_user.get_as_int("ctrl_authenticated")
         ctrl_locked = be_user.get_as_int("ctrl_locked")
         activation_token = be_user.get("activation_token")
         username = be_user.get("username")
@@ -91,11 +94,11 @@ class SessionUser(UserMixin):
         if ctrl_active == 1:
             self.active = True
 
-        if ctrl_authenticated == 1:
-            self.authenticated = True
-
         if ctrl_locked == 1:
             self.locked = True
+
+        if not self.locked and self.active and self.moderator or self.admin or self.user and self.activation_token:
+            self.authenticated = True
 
 
 class BeUser(Database):
@@ -108,65 +111,75 @@ class BeUser(Database):
         self.exists = False
         self.settings = None
 
-    def prepare_form_input(self, form_request):
-        for key in form_request:
-            for admin_column in self.column_admin_rights:
-                if key not in self.filter_from_form_prepare:
-                    data = escape(form_request[key])
-                    if data == 'y':
-                        data = 1
-                    if key == admin_column:
-                        if self.is_admin:
-                            self.set(key, data)
-                    else:
-                        self.set(key, data)
+    @property
+    def is_admin(self):
+        return self.get_as_int("ctrl_access_level") == 10
 
-    def get_username(self):
-        return self.get("username")
+    @property
+    def is_moderator(self):
+        return self.get_as_int("ctrl_access_level") == 5
+
+    @property
+    def is_user(self):
+        return self.get_as_int("ctrl_access_level") == 1
+
+    @property
+    def is_locked(self):
+        return bool(self.get_ctrl_locked())
 
     def get_password(self):
         return self.get("password")
 
-    @property
-    def is_locked(self):
-        return bool(self.get("ctrl_locked"))
+    def get_ctrl_access_level(self):
+        return self.get("ctrl_access_level")
 
-    @property
-    def is_admin(self):
-        return int(self.get("ctrl_access_level")) == 10
+    def get_ctrl_last_login(self):
+        return self.get("ctrl_last_login")
 
-    @property
-    def is_moderator(self):
-        return int(self.get("ctrl_access_level")) == 5
+    def get_ctrl_active(self):
+        return self.get("ctrl_active")
 
-    @property
-    def is_user(self):
-        return int(self.get("ctrl_access_level")) == 1
+    def get_activation_token(self):
+        return self.get("activation_token")
 
-    @property
-    def has_activation_token(self):
-        return bool(self.get("activation_token"))
+    def get_ctrl_failed_logins(self):
+        return self.get("ctrl_failed_logins")
 
-    @property
-    def is_active(self):
-        return bool(self.get("ctrl_active"))
+    def get_ctrl_locked(self):
+        return self.get("ctrl_locked")
 
-    @property
-    def is_authenticated(self):
-        return bool(self.get("ctrl_authenticated"))
+    def get_ctrl_lockout_time(self):
+        return self.get("ctrl_lockout_time")
 
-    @property
-    def is_anonymous(self):
-        return False
+    def set_username(self, value):
+        self.set("username", value)
 
-    def get_id(self):
-        try:
-            return super().get_id()
-        except AttributeError:
-            raise NotImplementedError('No `id` attribute - override `get_id`')
+    def set_password(self, value):
+        self.set("password", value)
+
+    def set_ctrl_access_level(self, value):
+        self.set("ctrl_access_level", value)
+
+    def set_ctrl_last_login(self, value):
+        self.set("ctrl_last_login", value)
+
+    def set_ctrl_active(self, value):
+        self.set("ctrl_active", value)
+
+    def set_activation_token(self, value):
+        self.set("activation_token", value)
+
+    def set_ctrl_failed_logins(self, value):
+        self.set("ctrl_failed_logins", value)
+
+    def set_ctrl_locked(self, value):
+        self.set("ctrl_locked", value)
+
+    def set_ctrl_lockout_time(self, value):
+        self.set("ctrl_lockout_time", value)
 
     def generate_activation_token(self):
-        return self.encryption.bin_2_hex(self.encryption.create_random_token(32))
+        return self.encryption.create_random_token(32)
 
     def hash_password(self, password):
         return self.encryption.hash_password(password)
@@ -186,22 +199,19 @@ class BeUser(Database):
         if self.create_instance_by("username"):
             self.exists = True
         if self.is_locked:
-            if self.get("ctrl_lockout_time") is not None:
-                lockout_time = self.get("ctrl_lockout_time")
+            if self.get_ctrl_lockout_time() is not None:
+                lockout_time = self.get_ctrl_lockout_time()
                 difference = lockout_time.timestamp() - datetime_now.timestamp()
                 if difference > 0:
                     flash("Ihr Account ist gesperrt", 'danger')
                 else:
-                    self.set("ctrl_locked", 0)
-                    self.set("ctrl_lockout_time", None)
-                    self.set("ctrl_failed_logins", 0)
+                    self.set_ctrl_locked(0)
+                    self.set_ctrl_lockout_time(None)
+                    self.set_ctrl_failed_logins(0)
         if self.exists:
-            stored_password = self.get("password")
-            print(stored_password)
+            stored_password = self.get_password()
             if self.encryption.validate_hash(stored_password, password):
-                self.set("ctrl_last_login", datetime_now)
-                self.set("ctrl_authenticated", 1)
-                self.set("ip_address", self.ip_address)
+                self.set_ctrl_last_login(datetime_now)
                 self.save()
                 if True:
                     system_mail.send_be_user_login_message(self)
@@ -209,16 +219,15 @@ class BeUser(Database):
             else:
                 failed_logins = self.get_as_int("ctrl_failed_logins")
                 failed_logins = failed_logins + 1
-                self.set("ctrl_failed_logins", failed_logins)
+                self.set_ctrl_failed_logins(failed_logins)
                 if failed_logins >= 3:
                     # lockout time beträgt 1 stunde
                     time = datetime_now.timestamp()
                     timestamp = time + 3600
                     date = datetime.fromtimestamp(timestamp)
-                    self.set("ctrl_locked", 1)
-                    self.set("ctrl_failed_logins", 3)
-                    self.set("ctrl_lockout_time", date)
-                    self.set("ctrl_authenticated", False)
+                    self.set_ctrl_locked(1)
+                    self.set_ctrl_failed_logins(3)
+                    self.set_ctrl_lockout_time(date)
                     if True:
                         system_mail.send_be_user_lockout_message(self)
                 self.save()
