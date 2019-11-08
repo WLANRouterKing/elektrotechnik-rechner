@@ -789,7 +789,7 @@ class SystemMail(Database):
         super().__init__()
         self.put_into_trash = False
         self.table_name = "system_mail"
-        self.set_sender(current_app.config["MAIL_DEFAULT_SENDER"])
+        self.set_sender(current_app.config["MAIL_FROM_EMAIL"])
 
     def add_line(self, line):
         current_message = self.get_message()
@@ -912,6 +912,12 @@ class Trash(Database):
     def get_item_table(self):
         return self.get("item_table")
 
+    def set_item_id(self, value):
+        self.set("item_id", value)
+
+    def set_item_table(self, value):
+        self.set("item_table", value)
+
     def recover(self):
         connection = self.get_connection()
         cursor = connection.cursor(prepared=True)
@@ -928,7 +934,7 @@ class Trash(Database):
         finally:
             self.close_connection(cursor)
         if row > 0:
-            return self.delete()
+            return True
         return False
 
     def delete_final(self):
@@ -947,5 +953,5 @@ class Trash(Database):
         finally:
             self.close_connection(cursor)
         if row > 0:
-            return self.delete()
+            return True
         return False
