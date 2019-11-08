@@ -35,11 +35,15 @@ def login():
                     session = Session()
                     session.set_user_id(be_user.get_id())
 
-                session.set_ip_address(escape(request.remote_addr))
-                session.set_user_agent(escape(request.user_agent))
-                session.set_token(session.encryption.create_random_token(32))
+                ip_address = escape(request.remote_addr)
+                user_agent = escape(request.user_agent)
+                token = session.encryption.create_random_token(32)
+
+                session.set_ip_address(ip_address)
+                session.set_user_agent(user_agent)
+                session.set_token(token)
                 session.set_timestamp(be_user.get_ctrl_last_login())
-                session.set_hash(session.create_session_hash())
+
                 if session.save() is not False:
                     session_user = be_user.create_session_user()
                     if login_user(session_user):
@@ -51,41 +55,19 @@ def login():
                 failed_login_record.set("username", be_user.get("username"))
                 failed_login_record.set("ip_address", be_user.ip_address)
                 failed_login_record.save()
-    return render_template("/backend/login.html", form=form)
+    return render_template("backend/login.html", form=form)
 
 
-@backend.route("/account/settings", methods=["GET", "POST"])
+@backend.route("/dashboard", methods=["GET"])
 @login_required
-def account_settings():
+def dashboard():
     """
-    Account Settings Endpunkt
-
-    Returns:
-
+     hauptnavigation
 
     """
-    user = current_user
-    form = EditAccountForm()
-    if user.get_id():
-        form.init_values(user)
-    if request.method == "POST":
-        if form.validate_on_submit():
-            user.temp_password = escape(request.form["user_password"])
-            if user.encryption.validate_hash(user.get("password"), user.temp_password):
-                user.prepare_form_input(request.form)
-                if user.save():
-                    new_user = BeUser()
-                    new_user.set("id", user.get_id())
-                    new_user.load()
-                    if logout_user():
-                        if login_user(new_user):
-                            flash("Accountdaten erfolgreich aktualisiert", "success")
-                            return redirect(url_for("backend.account_edit"))
-
-                    return redirect(url_for("backend.logout"))
-                else:
-                    flash("Accountdaten konnten nicht aktualisiert werden")
-    return render_template("/backend/account_edit.html", form=form)
+    # erstellt die navigation in bezug auf die benutzerrechte
+    create_nav()
+    return render_template("backend/dashboard.html")
 
 
 """
@@ -116,15 +98,10 @@ def account_edit():
                 flash("Sie haben ein falsches Passwort eingegeben", "danger")
         else:
             form.get_error_messages()
-    return render_template("/backend/account_edit.html", form=form)
+    return render_template("backend/account/edit_account.html", form=form)
 
 
-"""
-benutzer editieren
-"""
-
-
-@backend.route("/be_user/edit_user/<int:user_id>", methods=["GET", "POST"])
+@backend.route("/be_user/be_user_edit/<int:user_id>", methods=["GET", "POST"])
 @login_required
 def be_user_edit(user_id):
     """
@@ -159,48 +136,30 @@ def be_user_edit(user_id):
                 flash("Sie haben ein falsches Passwort eingegeben", 'danger')
         else:
             form.get_error_messages()
-    return render_template("backend/edit_user.html", form=form, user=user)
+    return render_template("backend/be_user/edit_be_user.html", form=form, user=user)
 
 
-"""
-benutzer hinzufügen
-"""
+@backend.route("/be_user", methods=["GET"])
+@login_required
+def be_user():
+    """
+
+    Returns:
+
+    """
+    be_user = BeUser()
+    be_users = be_user.object_list(be_user)
+    return render_template("backend/be_user/be_user.html", users=be_users)
 
 
-@backend.route("/register", methods=["GET", "POST"])
-def register():
-    form = AddUserForm(request.form)
-    if True:
-        if request.method == "POST" and form.validate_on_submit():
-            be_user = BeUser()
-            username = escape(request.form["username"])
-            password = escape(request.form["password"])
-            email = escape(request.form["email"])
-            token = be_user.generate_activation_token()
-            password = be_user.hash_password(password)
-            ctrl_access_level = int(request.form["ctrl_access_level"])
-            be_user.set("username", username)
-            be_user.set("password", password)
-            be_user.set("email", email)
-            be_user.set("activation_token", token)
-            be_user.set("ctrl_access_level", ctrl_access_level)
-            if validate_email(be_user.get("email")):
-                if be_user.register():
-                    flash("Der Benutzer wurde erfolgreich hinzugefügt", 'success')
-                else:
-                    flash("Der Benutzer konnte nicht erstellt werden", 'danger')
-            flash("Diese E-Mail Adresse scheint nicht zu existieren")
-    return render_template("backend/add_user.html", form=form)
-
-
-"""
-benutzer hinzufügen
-"""
-
-
-@backend.route("/be_user/add_user", methods=["GET", "POST"])
+@backend.route("/be_user/add_be_user", methods=["GET", "POST"])
 @login_required
 def be_user_add():
+    """
+
+    Returns:
+
+    """
     form = AddUserForm(request.form)
     if current_user.is_admin:
         if request.method == "POST" and form.validate_on_submit():
@@ -211,53 +170,50 @@ def be_user_add():
             token = be_user.generate_activation_token()
             password = be_user.hash_password(password)
             ctrl_access_level = int(request.form["ctrl_access_level"])
-            be_user.set("username", username)
-            be_user.set("password", password)
-            be_user.set("email", email)
-            be_user.set("activation_token", token)
-            be_user.set("ctrl_access_level", ctrl_access_level)
-            if validate_email(be_user.get("email"), verify=True):
+            be_user.set_username(username)
+            be_user.set_password(password)
+            be_user.set_email(email)
+            be_user.set_activation_token(token)
+            be_user.set_ctrl_access_level(ctrl_access_level)
+            if validate_email(be_user.get_email(), verify=True):
                 if be_user.register():
                     flash("Der Benutzer wurde erfolgreich hinzugefügt", 'success')
                 else:
                     flash("Der Benutzer konnte nicht erstellt werden", 'danger')
             else:
                 flash("Diese E-Mail Adresse scheint nicht zu existieren")
-        if form.username.errors:
-            flash(form.username.errors, 'danger')
-        if form.password.errors:
-            flash(form.password.errors, 'danger')
-        if form.email.errors:
-            flash(form.email.errors, 'danger')
-        return render_template("backend/add_user.html", form=form)
+        return render_template("backend/be_user/add_be_user.html", form=form)
     flash("Du hast nicht die benötigten Rechte", 'danger')
     return redirect(url_for("backend.dashboard"))
-
-
-"""
-fehlgeschlagene login versuche
-"""
 
 
 @backend.route("/failed_login_records", methods=["GET"])
 @login_required
 def failed_login_records():
+    """
+
+    Returns:
+
+    """
     if current_user.is_moderator or current_user.is_admin:
         failed_login_record = FailedLoginRecord()
         failed_login_records = failed_login_record.object_list(failed_login_record)
-        return render_template("/backend/failed_login_records.html", failed_login_records=failed_login_records)
+        return render_template("backend/system/failed_login_records.html", failed_login_records=failed_login_records)
     flash("Du hast nicht die benötigten Rechte", "danger")
     return redirect(url_for("backend.dashboard"))
-
-
-"""
-fehlgeschlagene login versuche löschen
-"""
 
 
 @backend.route("/failed_login_records/delete/<int:id>", methods=["GET"])
 @login_required
 def failed_login_records_delete(id):
+    """
+
+    Args:
+        id:
+
+    Returns:
+
+    """
     if current_user.is_admin:
         failed_login_record = FailedLoginRecord()
         failed_login_record.set("id", id)
@@ -265,99 +221,102 @@ def failed_login_records_delete(id):
     return redirect(url_for("backend.failed_login_records"))
 
 
-"""
-meldungen über benutzer
-"""
-
-
 @backend.route("/reports", methods=["GET"])
 @login_required
 def reports():
+    """
+
+    Returns:
+
+    """
     if current_user.is_moderator or current_user.is_admin:
-        return render_template("/backend/dashboard.html")
+        return render_template("backend/system/reports.html")
     flash("Du hast nicht die benötigten Rechte", "danger")
     return redirect(url_for("backend.dashboard"))
-
-
-"""
-versendete nachrichten des systems
-"""
 
 
 @backend.route("/system_mails", methods=["GET"])
 @login_required
 def system_mails():
+    """
+
+    Returns:
+
+    """
     if current_user.is_moderator or current_user.is_admin:
         system_mail = SystemMail()
         system_mails = system_mail.object_list(system_mail)
-        return render_template("/backend/system_mails.html", system_mails=system_mails)
+        return render_template("backend/system/system_mails.html", system_mails=system_mails)
     flash("Du hast nicht die benötigten Rechte", "danger")
     return redirect(url_for("backend.dashboard"))
 
 
-"""
-dashboard ansicht
-"""
-
-
-@backend.route("/dashboard", methods=["GET"])
-@login_required
-def dashboard():
-    """
-     hauptnavigation
-
-    """
-    # erstellt die navigation in bezug auf die benutzerrechte
-    create_nav()
-    return render_template("/backend/dashboard.html")
-
-
-"""
-user loader
-hier wird beim aufruf von login.required dekorierten punkten
-der in der session gespeicherte benutzer geladen wenn vorhanden
-"""
-
-
 @login_manager.user_loader
 def load_user(user_id):
+    """
+    user loader
+    hier wird beim aufruf von login.required dekorierten punkten
+    der in der session gespeicherte benutzer geladen wenn vorhanden
+
+    Args:
+        user_id:
+
+    Returns:
+
+    """
     if user_id > 0:
         user = BeUser()
         user.set("id", user_id)
         user.load()
         session = Session()
         session.set_user_id(user.get_id())
-        if session.session_exists():
-            if session.is_valid():
-                session_user = user.create_session_user()
+        if session.load():
+            session_user = user.create_session_user()
+            session_user.ip_address = request.remote_addr
+            session_user.user_agent = request.user_agent
+            session_user.token = session.get_token()
+            session_user.timestamp = session.get_timestamp()
+            hash = session.get_user_hash_string(session_user.id, session_user.user_agent, session_user.ip_address, session_user.token, session_user.timestamp)
+            if session.is_valid(session.encryption.get_generic_hash(hash)):
                 return session_user
             else:
                 session.delete()
     return None
 
 
-@backend.route("/be_user", methods=["GET"])
-@login_required
-def be_user():
-    be_user = BeUser()
-    be_users = be_user.object_list(be_user)
-    return render_template("/backend/be_user.html", users=be_users)
-
-
 @backend.route("/user", methods=["GET"])
 @login_required
 def user():
-    return render_template("/backend/dashboard.html")
+    """
+
+    Returns:
+
+    """
+    return render_template("backend/user/user.html")
 
 
 @backend.route("/user/add_user", methods=["GET", "POST"])
 @login_required
 def user_add():
-    return render_template("/backend/dashboard.html")
+    """
+
+    Returns:
+
+    """
+    return render_template("backend/dashboard.html")
 
 
 @backend.route("/user/activate/<int:user_id>/<string:activation_token>", methods=["GET"])
 def user_activate(user_id, activation_token):
+    """
+
+    Args:
+        user_id:
+        activation_token:
+
+    Returns:
+
+    """
     if user_id <= 0:
         abort(400)
 
@@ -385,6 +344,11 @@ def user_activate(user_id, activation_token):
 @backend.route("/logout", methods=["GET"])
 @login_required
 def logout():
+    """
+
+    Returns:
+
+    """
     user = current_user
     session = Session()
     session.set_user_id(user.get_id())
@@ -397,4 +361,9 @@ def logout():
 
 @login_manager.unauthorized_handler
 def unauthorized():
+    """
+
+    Returns:
+
+    """
     return redirect(url_for("backend.login"))

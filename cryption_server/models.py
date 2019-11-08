@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from datetime import datetime
+import datetime
 from re import search
 import mysql.connector
 import copy
@@ -9,6 +9,7 @@ import nacl.utils
 import nacl.secret
 import nacl.encoding
 import nacl.pwhash
+import nacl.signing
 from flask_login import current_user
 from nacl import encoding, hash
 from nacl.bindings import sodium_memcmp
@@ -100,8 +101,6 @@ class Encryption:
             data_encrypted = box.encrypt(bytes(data, encoding="utf-8"), nonce=None, encoder=encoding.Base64Encoder)
             return data_encrypted.decode('utf-8')
         except Exception as error:
-            print(data)
-            print(error)
             my_logger.log(10, error)
         return data
 
@@ -128,6 +127,21 @@ class Encryption:
         except Exception as error:
             my_logger.log(10, error)
         return ""
+
+    def sign_message(self, message):
+        """
+
+        Args:
+            message:
+
+        Returns:
+
+        """
+        signing_key = nacl.signing.SigningKey.generate()
+        signed = signing_key.sign(bytes(message))
+        verify_key = signing_key.verify_key
+        verify_key_hex = verify_key.encode(encoder=nacl.encoding.HexEncoder)
+        return signed, verify_key_hex
 
     def hash_password(self, password):
         """
@@ -283,7 +297,7 @@ class Database:
         return self.get("username")
 
     def get_user_agent(self):
-        self.get("user_agent")
+        return self.get("user_agent")
 
     def get_ctrl_time(self):
         return self.get("ctrl_time")
@@ -325,7 +339,7 @@ class Database:
         self.set("ctrl_deleted", value)
 
     def set_ip_address(self, value):
-        return self.set("ip_address", value)
+        self.set("ip_address", value)
 
     def set_user_agent(self, value):
         self.set("user_agent", value)
@@ -671,7 +685,6 @@ class Database:
                 return False
             table = self.table_name
             sql = """SELECT id FROM {0} WHERE {1} = %s""".format(table, key)
-            print(sql)
             cursor.execute(sql, [value])
             rows = cursor.fetchone()
         except Exception as error:
@@ -681,7 +694,6 @@ class Database:
 
         if rows is not None:
             id = rows[0]
-            print(id)
             if id > 0:
                 self.set("id", id)
                 self.load()
@@ -719,8 +731,8 @@ class Session(Database):
     def get_timestamp(self):
         return self.get("timestamp")
 
-    def get_hash(self):
-        return self.get("hash")
+    def get_signed(self):
+        return self.get("signed")
 
     def get_is_authenticated(self):
         return self.get("ctrl_authenticated")
@@ -734,40 +746,37 @@ class Session(Database):
     def set_timestamp(self, value):
         self.set("timestamp", value)
 
-    def get_timestamp_as_str(self):
-        date = self.get_timestamp()
-        return date.strftime("%d.%m.%Y %H:%M")
-
-    def set_hash(self, value):
-        self.set("hash", value)
+    def set_signed(self, value):
+        self.set("signed", value)
 
     def session_exists(self):
-        return self.create_instance_by("user_id")
+        return self.load()
 
     def is_authenticated(self):
         return bool(self.get_is_authenticated())
 
     def get_session_hash_string(self):
-        token = str(self.get_token())
-        timestamp = str(self.get_timestamp().strftime("%d.%m.%Y %H:%M"))
-        user_id = str(self.get_user_id())
-        user_agent = str(self.get_user_agent())
-        ip_address = str(self.get_ip_address())
+        token = self.get_token()
+        timestamp = self.get_timestamp()
+        user_id = self.get_user_id()
+        user_agent = self.get_user_agent()
+        ip_address = self.get_ip_address()
         return "{0}{1}{2}{3}{4}".format(token, timestamp, user_id, user_agent, ip_address)
 
-    def create_session_hash(self):
-        return self.encryption.get_generic_hash(self.get_session_hash_string())
+    def get_user_hash_string(self, user_id, user_agent, ip_address, token, timestamp):
+        return "{0}{1}{2}{3}{4}".format(token, timestamp, user_id, user_agent, ip_address)
 
-    def is_valid(self):
-        datetime_now = datetime.now()
+    def is_valid(self, user_hash):
+        datetime_now = datetime.datetime.now()
         session_time = self.get_timestamp()
-        difference = datetime_now.timestamp() - session_time.timestamp()
-        difference_minute = difference / 60
-        print(difference_minute)
+        difference_minute = 9999999
+        if isinstance(session_time, datetime.datetime):
+            difference = datetime_now.timestamp() - session_time.timestamp()
+            difference_minute = difference / 60
         if difference_minute <= 5:
             my_logger.log(10, """Session mit der User ID {0} ist noch nicht abgelaufen""".format(self.get_user_id()))
-            hash = self.encryption.get_generic_hash(self.get_session_hash_string())
-            if sodium_memcmp(bytes(hash), bytes(self.get_hash(), encoding="utf-8")):
+            hash_session = self.encryption.get_generic_hash(self.get_session_hash_string())
+            if sodium_memcmp(hash_session, user_hash):
                 my_logger.log(10, """Session mit der User ID {0} ist valid""".format(self.get_user_id()))
                 return True
         my_logger.log(10, """Session abgelaufen. User mit der ID {0} muss ausgeloggt werden.""".format(self.get_user_id()))

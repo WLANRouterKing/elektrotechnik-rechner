@@ -31,4 +31,4 @@ def create_nav():
         ]))
 
     # navigationspunkt account
-    navbar_main_items.append(nav.Item('Account', '', items=[nav.Item("Account bearbeiten", 'backend.account_edit'), nav.Item("Account Einstellungen", 'backend.account_settings'), nav.Item('Logout', 'backend.logout')]))
+    navbar_main_items.append(nav.Item('Account', '', items=[nav.Item("Account bearbeiten", 'backend.account_edit'), nav.Item('Logout', 'backend.logout')]))

@@ -30,6 +30,12 @@ class SessionUser(UserMixin):
     id = 0
     token = ""
 
+    def __init__(self):
+        self.user_agent = ""
+        self.ip_address = ""
+        self.token = ""
+        self.timestamp = ""
+
     def get_id(self):
         return self.id
 
@@ -68,6 +74,9 @@ class SessionUser(UserMixin):
     def is_anonymous(self):
         return self.anonymous
 
+    def verify_key(self):
+        return self.verify_key
+
     def init_values(self, be_user):
         id = be_user.get_as_int("id")
         ctrl_access_level = be_user.get_as_int("ctrl_access_level")
@@ -76,7 +85,6 @@ class SessionUser(UserMixin):
         activation_token = be_user.get("activation_token")
         username = be_user.get("username")
         last_login = be_user.get("ctrl_last_login")
-
         self.last_login = last_login
         self.username = username
         self.id = id
@@ -155,11 +163,17 @@ class BeUser(Database):
     def get_ctrl_lockout_time(self):
         return self.get("ctrl_lockout_time")
 
+    def get_email(self):
+        return self.get("email")
+
     def set_username(self, value):
         self.set("username", value)
 
     def set_password(self, value):
         self.set("password", value)
+
+    def set_email(self, value):
+        self.set("email", value)
 
     def set_ctrl_access_level(self, value):
         self.set("ctrl_access_level", value)
