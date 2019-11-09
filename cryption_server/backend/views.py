@@ -1,11 +1,15 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from flask import render_template, request, flash, redirect, url_for, escape, abort
+import os
+
+from flask import render_template, request, flash, redirect, url_for, escape, abort, make_response, current_app
 from validate_email import validate_email
-from cryption_server.models import SystemMail, Session
+from werkzeug.utils import secure_filename
+
+from cryption_server.models import SystemMail, Session, News
 from . import backend
 from .models import BeUser, FailedLoginRecord
-from .forms import LoginForm, AddUserForm, EditUserForm, EditAccountForm
+from .forms import LoginForm, AddUserForm, EditUserForm, EditAccountForm, NewsEditorForm
 from flask_login import login_user, current_user, login_required, logout_user
 from cryption_server import login_manager, my_logger
 from .nav import create_nav
@@ -51,11 +55,12 @@ def login():
                         return redirect(url_for("backend.dashboard"))
             else:
                 failed_login_record = FailedLoginRecord()
-                failed_login_record.set("user_id", be_user.get_id())
-                failed_login_record.set("username", be_user.get("username"))
-                failed_login_record.set("ip_address", be_user.ip_address)
+                failed_login_record.set_user_id(be_user.get_id())
+                failed_login_record.set_username(be_user.get_username())
+                failed_login_record.set_ip_address(request.remote_addr)
+                failed_login_record.set_user_agent(request.user_agent)
                 failed_login_record.save()
-    return render_template("backend/login.html", form=form)
+    return render_template("login.html", form=form)
 
 
 @backend.route("/dashboard", methods=["GET"])
@@ -67,7 +72,7 @@ def dashboard():
     """
     # erstellt die navigation in bezug auf die benutzerrechte
     create_nav()
-    return render_template("backend/dashboard.html")
+    return render_template("dashboard.html")
 
 
 """
@@ -88,17 +93,14 @@ def account_edit():
     if request.method == "POST":
         if form.validate_on_submit():
             be_user.temp_password = escape(request.form["user_password"])
-            if be_user.encryption.validate_hash(be_user.get("password"), be_user.temp_password):
+            if be_user.encryption.validate_hash(be_user.get_password(), be_user.temp_password):
                 be_user.prepare_form_input(request.form)
-                if be_user.save():
-                    flash("Accountdaten erfolgreich aktualisiert", "success")
-                else:
-                    flash("Accountdaten konnten nicht aktualisiert werden")
+                be_user.save()
             else:
                 flash("Sie haben ein falsches Passwort eingegeben", "danger")
         else:
             form.get_error_messages()
-    return render_template("backend/account/edit_account.html", form=form)
+    return render_template("account/edit_account.html", form=form)
 
 
 @backend.route("/be_user/be_user_edit/<int:user_id>", methods=["GET", "POST"])
@@ -126,17 +128,14 @@ def be_user_edit(user_id):
             be_user.set_id(current_user.get_id())
             be_user.load()
             be_user.temp_password = escape(request.form["user_password"])
-            if be_user.encryption.validate_hash(be_user.get("password"), be_user.temp_password):
+            if be_user.encryption.validate_hash(be_user.get_password(), be_user.temp_password):
                 user.prepare_form_input(request.form)
-                if user.save():
-                    flash("Der Benutzer wurde erfolgreich aktualisiert", 'success')
-                else:
-                    flash("Der Benutzer konnte nicht aktualisiert werden", 'danger')
+                user.save()
             else:
                 flash("Sie haben ein falsches Passwort eingegeben", 'danger')
         else:
             form.get_error_messages()
-    return render_template("backend/be_user/edit_be_user.html", form=form, user=user)
+    return render_template("be_user/edit_be_user.html", form=form, user=user)
 
 
 @backend.route("/be_user", methods=["GET"])
@@ -149,7 +148,7 @@ def be_user():
     """
     be_user = BeUser()
     be_users = be_user.object_list(be_user)
-    return render_template("backend/be_user/be_user.html", users=be_users)
+    return render_template("be_user/be_user.html", users=be_users)
 
 
 @backend.route("/be_user/add_be_user", methods=["GET", "POST"])
@@ -182,7 +181,7 @@ def be_user_add():
                     flash("Der Benutzer konnte nicht erstellt werden", 'danger')
             else:
                 flash("Diese E-Mail Adresse scheint nicht zu existieren")
-        return render_template("backend/be_user/add_be_user.html", form=form)
+        return render_template("be_user/add_be_user.html", form=form)
     flash("Du hast nicht die benötigten Rechte", 'danger')
     return redirect(url_for("backend.dashboard"))
 
@@ -198,7 +197,7 @@ def failed_login_records():
     if current_user.is_moderator or current_user.is_admin:
         failed_login_record = FailedLoginRecord()
         failed_login_records = failed_login_record.object_list(failed_login_record)
-        return render_template("backend/system/failed_login_records.html", failed_login_records=failed_login_records)
+        return render_template("system/failed_login_records.html", failed_login_records=failed_login_records)
     flash("Du hast nicht die benötigten Rechte", "danger")
     return redirect(url_for("backend.dashboard"))
 
@@ -230,7 +229,7 @@ def reports():
 
     """
     if current_user.is_moderator or current_user.is_admin:
-        return render_template("backend/system/reports.html")
+        return render_template("system/reports.html")
     flash("Du hast nicht die benötigten Rechte", "danger")
     return redirect(url_for("backend.dashboard"))
 
@@ -246,7 +245,7 @@ def system_mails():
     if current_user.is_moderator or current_user.is_admin:
         system_mail = SystemMail()
         system_mails = system_mail.object_list(system_mail)
-        return render_template("backend/system/system_mails.html", system_mails=system_mails)
+        return render_template("system/system_mails.html", system_mails=system_mails)
     flash("Du hast nicht die benötigten Rechte", "danger")
     return redirect(url_for("backend.dashboard"))
 
@@ -292,7 +291,7 @@ def user():
     Returns:
 
     """
-    return render_template("backend/user/user.html")
+    return render_template("user/user.html")
 
 
 @backend.route("/user/add_user", methods=["GET", "POST"])
@@ -303,7 +302,7 @@ def user_add():
     Returns:
 
     """
-    return render_template("backend/dashboard.html")
+    return render_template("dashboard.html")
 
 
 @backend.route("/user/activate/<int:user_id>/<string:activation_token>", methods=["GET"])
@@ -341,6 +340,56 @@ def user_activate(user_id, activation_token):
     return redirect(url_for("backend.login"))
 
 
+@backend.route("/content/news", methods=["GET"])
+@login_required
+def news():
+    """
+
+    Returns:
+
+    """
+    return render_template("content/news/news.html")
+
+
+@backend.route("/content/news/add_news/", methods=["GET", "POST"])
+@backend.route("/content/news/add_news/<int:id>", methods=["GET", "POST"])
+@login_required
+def add_news(id=0):
+    """
+
+    Returns:
+
+    """
+
+    form = NewsEditorForm()
+    news = News()
+    news.set_id(id)
+    news.load()
+
+    if request.method == "GET":
+        form.get_editor_edit_message(news)
+
+    if id <= 0:
+        news.init_default()
+        news.save()
+    else:
+        if request.method == "POST" and form.validate_on_submit():
+            news.prepare_form_input(request.form)
+            news.save()
+    return render_template("content/news/add_news.html", form=form, news=news)
+
+
+@backend.route("/content/news/edit_news/<int:id>", methods=["GET", "POST"])
+@login_required
+def edit_news(id):
+    """
+
+    Returns:
+
+    """
+    return render_template("content/news/edit_news.html")
+
+
 @backend.route("/logout", methods=["GET"])
 @login_required
 def logout():
@@ -357,6 +406,37 @@ def logout():
     if logout_user():
         flash("Erfolgreich abgemeldet", "success")
         return redirect(url_for("backend.login"))
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in current_app.config["ALLOWED_IMAGE_EXTENSIONS"]
+
+
+@backend.route("/ajax/image_upload", methods=["POST"])
+@login_required
+def image_upload():
+    """
+
+    Returns:
+
+    """
+
+    if "file" in request.files:
+        file = request.files["file"]
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            type = escape(request.form["type"])
+            module = escape(request.form["module"])
+            base_upload_path = current_app.config["ROOT_DIR"] + "static/uploads/"
+            final_upload_path = base_upload_path + type + "/" + module + "/"
+            print(final_upload_path)
+            if not os.path.isdir(final_upload_path):
+                os.makedirs(final_upload_path)
+
+            file.save(os.path.join(final_upload_path, filename))
+            return filename
+    return make_response(500)
 
 
 @login_manager.unauthorized_handler

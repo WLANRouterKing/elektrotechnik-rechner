@@ -11,6 +11,7 @@ class FailedLoginRecord(Database):
 
     def __init__(self):
         super().__init__()
+        self.item_editable = False
         self.class_label = "Fehlgeschlagener Loginversuch"
         self.table_name = "failed_login_record"
         self.exclude_from_encryption.pop(1)
@@ -113,6 +114,7 @@ class BeUser(Database):
 
     def __init__(self):
         super().__init__()
+        self.item_editable = True
         self.table_name = "be_user"
         self.temp_password = ""
         self.ip_address = ""
@@ -148,9 +150,6 @@ class BeUser(Database):
     def get_ctrl_last_login(self):
         return self.get("ctrl_last_login")
 
-    def get_ctrl_active(self):
-        return self.get("ctrl_active")
-
     def get_activation_token(self):
         return self.get("activation_token")
 
@@ -166,9 +165,6 @@ class BeUser(Database):
     def get_email(self):
         return self.get("email")
 
-    def set_username(self, value):
-        self.set("username", value)
-
     def set_password(self, value):
         self.set("password", value)
 
@@ -180,9 +176,6 @@ class BeUser(Database):
 
     def set_ctrl_last_login(self, value):
         self.set("ctrl_last_login", value)
-
-    def set_ctrl_active(self, value):
-        self.set("ctrl_active", value)
 
     def set_activation_token(self, value):
         self.set("activation_token", value)
@@ -211,6 +204,12 @@ class BeUser(Database):
     """
 
     def validate_login(self):
+        """
+
+
+        Returns:
+
+        """
         system_mail = SystemMail()
         datetime_now = datetime.now()
         password = self.temp_password
@@ -230,7 +229,9 @@ class BeUser(Database):
             stored_password = self.get_password()
             if self.encryption.validate_hash(stored_password, password):
                 self.set_ctrl_last_login(datetime_now)
+                self.item_editable = False
                 self.save()
+                self.item_editable = True
                 if True:
                     system_mail.send_be_user_login_message(self)
                 return True

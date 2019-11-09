@@ -6,7 +6,12 @@ from cryption_server import nav
 def create_nav():
     nav.Bar('main', [
         nav.Item('Dashboard', 'backend.dashboard'),
-        nav.Item('Inhalte', 'backend.dashboard'),
+        nav.Item('Inhalte', 'backend.dashboard', items=[
+            nav.Item("News", 'backend.news', items=[
+                nav.Item("News Übersicht", 'backend.news'),
+                nav.Item("News Meldung erstellen", 'backend.add_news')
+            ])
+        ]),
     ])
 
     navbar_main = nav.bars.__getitem__('main')

@@ -1,19 +1,23 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 from datetime import timedelta
-from flask import session
+from flask import session, flash
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileRequired, FileAllowed
 from markupsafe import iteritems
-from wtforms import StringField, PasswordField, SubmitField, SelectField, DateTimeField, BooleanField
+from wtforms import StringField, PasswordField, SubmitField, SelectField, DateTimeField, BooleanField, TextAreaField, FileField
 from wtforms.validators import DataRequired, EqualTo, Length, Email
 from wtforms.csrf.session import SessionCSRF
 
 
 class CustomForm(FlaskForm):
+    type = "content"
+    module = ""
+
     class Meta:
         csrf = True
         csrf_class = SessionCSRF
-        csrf_time_limit = timedelta(minutes=5)
+        csrf_time_limit = timedelta(minutes=30)
 
         @property
         def csrf_context(self):
@@ -35,13 +39,21 @@ class CustomForm(FlaskForm):
             element = field
             element.data = object.get(key)
 
+    def get_editor_add_message(self, object):
+        label = object.class_label
+        message = """{0} erstellen""".format(label)
+        flash(message, "info")
+
+    def get_editor_edit_message(self, object):
+        label = object.class_label
+        message = "{0} bearbeiten".format(label)
+        flash(message, "info")
+
 
 class EditAccountForm(CustomForm):
     ctrl_active = BooleanField("Aktiv", false_values=('false', 0))
     ctrl_locked = BooleanField("Gesperrt", false_values=('false', 'false'))
     username = StringField('Benutzername', validators=[DataRequired(), Length(min=4, max=30)])
-    password = PasswordField('Passwort', validators=[EqualTo('password2', message='Passwörter müssen übereinstimmen')])
-    password2 = PasswordField('Passwort wiederholen')
     email = StringField('E-Mail', validators=[DataRequired(), Email(message="Bitte eine korrekte E-Mail Adresse angeben")])
     activation_token = StringField("Activation Token")
     ctrl_access_level = SelectField("Zugriffslevel", choices=[("10", 'Admin'), ("5", 'Moderator'), ("1", 'Benutzer')])
@@ -75,3 +87,16 @@ class EditUserForm(CustomForm):
     activation_token = StringField("Activation Token")
     user_password = PasswordField("Ihr Benutzerpasswort zur Authentifizierung", validators=[DataRequired(), Length(min=4, max=128)])
     submit = SubmitField('Benutzer aktualisieren')
+
+
+class NewsEditorForm(CustomForm):
+    module = "news"
+    eid = StringField("EID")
+    custom_eid = StringField("Custom EID")
+    title = StringField("Titel", validators=[DataRequired()])
+    intro_text = TextAreaField("Intro Text", validators=[Length(max=145)])
+    text = TextAreaField("Text", render_kw={'class': 'texteditor'})
+    main_image = FileField("Hauptbild", validators=[FileRequired(), FileAllowed(["jpg", "png", "gif", "svg"], "Nur Bilder")], render_kw={'class': 'fileupload'})
+    meta_image = FileField("Meta Bild", validators=[FileRequired(), FileAllowed(["jpg", "png", "gif", "svg"], "Nur Bilder")], render_kw={'class': 'fileupload'})
+    teaser_image = FileField("Teaser Bild", validators=[FileRequired(), FileAllowed(["jpg", "png", "gif", "svg"], "Nur Bilder")], render_kw={'class': 'fileupload'})
+    submit = SubmitField("News Meldung speichern")

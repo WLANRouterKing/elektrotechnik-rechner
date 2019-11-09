@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+import ipaddress
 import datetime
 from re import search
 import mysql.connector
@@ -35,6 +36,7 @@ class Encryption:
             str: Den generierten Token
 
         """
+
         return self.bin_2_hex(nacl.utils.random(length))
 
     def bin_2_hex(self, value):
@@ -225,13 +227,14 @@ class Database:
         self.encrypt = False
         self.connection = None
         self.encryption = Encryption()
+        self.item_editable = True
         self.class_label = ""
         self.table_name = ""
         self.arrData = dict()
         self.put_into_trash = True
         self.exclude_from_encryption = ["id", "password", "username", "user_id", "ctrl"]
         self.column_admin_rights = ["ctrl_access_level"]
-        self.filter_from_form_prepare = ["csrf_token", "user_password", "submit"]
+        self.filter_from_form_prepare = ["csrf_token", "user_password", "submit", "password2"]
 
     def get(self, key):
         """
@@ -288,6 +291,9 @@ class Database:
             user_id = 0
         return int(user_id)
 
+    def set_username(self, value):
+        self.set("username", value)
+
     def get_username(self):
         """
 
@@ -298,6 +304,9 @@ class Database:
 
     def get_user_agent(self):
         return self.get("user_agent")
+
+    def get_ctrl_active(self):
+        return self.get("ctrl_active")
 
     def get_ctrl_time(self):
         return self.get("ctrl_time")
@@ -344,6 +353,18 @@ class Database:
     def set_user_agent(self, value):
         self.set("user_agent", value)
 
+    def set_ctrl_active(self, value):
+        self.set("ctrl_active", value)
+
+    def is_ip_address(self, value):
+        try:
+            ipaddress.ip_address(value)
+            return True
+        except Exception as error:
+            my_logger.log(10, error)
+        finally:
+            return False
+
     def get_as_int(self, key):
         """
         Liefert einen Integer Wert für einen Schlüssel
@@ -359,6 +380,31 @@ class Database:
             integer = int(string)
             return integer
         return 0
+
+    def get_columns(self):
+        table = self.table_name
+        connection = self.get_connection()
+        cursor = connection.cursor(prepared=True)
+        columns = list()
+        try:
+            sql = "SHOW COLUMNS FROM {0}".format(table)
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+            for d in rows:
+                column = d[0].decode("utf-8")
+                columns.append(column)
+            print(sql)
+            print(columns)
+        except Exception as error:
+            my_logger.log(10, error)
+        finally:
+            self.close_connection(cursor)
+        return columns
+
+    def init_default(self):
+        for column in self.get_columns():
+            if column != "id" and search("ctrl", column) is None:
+                self.set(column, "")
 
     def get_connection(self):
         """
@@ -397,9 +443,7 @@ class Database:
         for key in form_request:
             if key not in self.filter_from_form_prepare:
                 data = escape(form_request[key])
-                if data == 'y':
-                    data = 1
-                    self.set(key, data)
+                self.set(key, data)
 
     def load(self):
         """
@@ -488,9 +532,18 @@ class Database:
             values = list(data.values())
             sql = """UPDATE {0} SET {1} WHERE id = %s """.format(table, update_string)
             cursor.execute(sql, values)
+            rowcount = cursor.rowcount
             connection.commit()
-            success = True
+            if rowcount > 0:
+                success = True
+
+            if rowcount > 0 and self.item_editable:
+                flash("{0} mit der ID {1} wurde erfolgreich aktualisiert {2}".format(self.class_label, self.get_id(), self.table_name), "success")
+            elif rowcount <= 0 and self.item_editable:
+                flash("{0} mit der ID {1} konnte nicht aktualisiert werden {2}".format(self.class_label, self.get_id(), self.table_name), "success")
+
         except Exception as error:
+            my_logger.log(10, error)
             success = False
         finally:
             self.close_connection(cursor)
@@ -511,6 +564,7 @@ class Database:
         """
         connection = self.get_connection()
         cursor = connection.cursor(prepared=True)
+        success = False
         try:
             table = self.table_name
             data = self.encrypt_data()
@@ -521,14 +575,23 @@ class Database:
             cursor.execute(sql, values)
             row = cursor.lastrowid
             connection.commit()
+
             if row > 0:
-                return row
+                print(row)
+                self.set("id", row)
+                success = row
+
+            if row > 0 and self.item_editable:
+                flash("{0} mit der ID {1} wurde erfolgreich erstellt".format(self.class_label, self.get_id()), "success")
+            elif row <= 0 and self.item_editable:
+                flash("{0} mit der ID {1} konnte nicht erstellt werden".format(self.class_label, self.get_id()), "success")
+
         except Exception as error:
             my_logger.log(10, error)
         finally:
             self.close_connection(cursor)
 
-        return False
+        return success
 
     def delete(self):
         """
@@ -656,12 +719,12 @@ class Database:
     """
 
     def save(self):
+        print(self.arrData)
         if self.get_id() > 0:
             return self.update()
         else:
             id = self.insert()
             if id > 0:
-                self.set("id", id)
                 return True
             return False
 
@@ -722,6 +785,7 @@ class Session(Database):
 
     def __init__(self):
         super().__init__()
+        self.item_editable = False
         self.table_name = "session"
         self.put_into_trash = False
 
@@ -773,7 +837,7 @@ class Session(Database):
         if isinstance(session_time, datetime.datetime):
             difference = datetime_now.timestamp() - session_time.timestamp()
             difference_minute = difference / 60
-        if difference_minute <= 5:
+        if difference_minute <= 30:
             my_logger.log(10, """Session mit der User ID {0} ist noch nicht abgelaufen""".format(self.get_user_id()))
             hash_session = self.encryption.get_generic_hash(self.get_session_hash_string())
             if sodium_memcmp(hash_session, user_hash):
@@ -787,6 +851,7 @@ class SystemMail(Database):
 
     def __init__(self):
         super().__init__()
+        self.item_editable = False
         self.put_into_trash = False
         self.table_name = "system_mail"
         self.set_sender(current_app.config["MAIL_FROM_EMAIL"])
@@ -883,6 +948,7 @@ class KeyPair(Database):
 
     def __init__(self):
         super().__init__()
+        self.item_editable = False
         self.table_name = "keypair"
         self.put_into_trash = False
 
@@ -903,6 +969,7 @@ class Trash(Database):
 
     def __init__(self):
         super().__init__()
+        self.item_editable = False
         self.table_name = "trash"
         self.put_into_trash = False
 
@@ -955,3 +1022,59 @@ class Trash(Database):
         if row > 0:
             return True
         return False
+
+
+class News(Database):
+
+    def __init__(self):
+        super().__init__()
+        self.table_name = "news"
+        self.class_label = "News-Meldung"
+
+    def get_eid_custom(self):
+        return self.get("eid_custom")
+
+    def get_ctrl_datetime(self):
+        return self.get("ctrl_datetime")
+
+    def get_meta_description(self):
+        return self.get("meta_description")
+
+    def get_meta_title(self):
+        return self.get("meta_title")
+
+    def get_meta_image(self):
+        return ""
+
+    def get_main_image(self):
+        return ""
+
+    def get_teaser_image(self):
+        return ""
+
+    def get_news_images(self):
+        return ""
+
+    def set_eid_custom(self, value):
+        self.set("", value)
+
+    def set_ctrl_datetime(self, value):
+        self.set("", value)
+
+    def set_meta_description(self, value):
+        self.set("", value)
+
+    def set_meta_title(self, value):
+        self.set("", value)
+
+    def set_meta_image(self, value):
+        self.set("", value)
+
+    def set_main_image(self, value):
+        self.set("", value)
+
+    def set_teaser_image(self, value):
+        self.set("", value)
+
+    def set_news_images(self, value):
+        self.set("", value)

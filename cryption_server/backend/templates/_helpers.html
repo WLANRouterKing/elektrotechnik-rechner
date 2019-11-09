@@ -1,0 +1,48 @@
+{% macro render_form(form) %}
+    {% for elem in form %}
+        <div class="form-group {{ 'form-inline' if elem.widget.input_type == 'checkbox' }}">
+            {% if elem.widget.input_type == 'checkbox' %}
+                {{ elem(class_="form-control form-control-sm") }}
+                {{ elem.label(class_="form-label-sm") }}
+            {% elif elem.widget.input_type == 'hidden' %}
+                {{ elem }}
+            {% elif elem.widget.input_type == 'submit' %}
+                {{ elem(class_="form-control form-control-sm btn-dark") }}
+            {% elif elem.widget.type == 'DateTimeField' %}
+                {{ elem.label(class_="form-label-sm") }}
+                {{ elem(class_="form-control form-control-sm datepicker") }}
+            {% elif elem.widget.input_type == 'file' %}
+                <div class="fileupload-container form-control">
+                    <input class="fileupload-type" type="hidden" name="type" value="{{ form.type }}">
+                    <input class="fileupload-module" type="hidden" name="module" value="{{ form.module }}">
+                    <input type="hidden" class="fileupload-image-format" value="{{ elem.label.field_id }}">
+                    <span>{{ elem.label }}</span></br>
+                    <div class="dz-message form-control">
+                        <span>Hier Dateien ablegen</span>
+                    </div>
+                    <span class="info">Bilder im Format {{ config["IMAGE_FORMATS"][form.module][elem.label.field_id]["width"] }} x {{ config["IMAGE_FORMATS"][form.module][elem.label.field_id]["height"] }}</span>
+                    <span class="extensions">
+                    Erlaubte Dateien:&nbsp;
+                        {% for extension in config["ALLOWED_IMAGE_EXTENSIONS"] %}
+                            {{ extension }}&nbsp;
+                        {% endfor %}
+                    </span>
+                    <div class="fallback">
+                        {{ elem }}
+                    </div>
+                </div>
+            {% else %}
+                {{ elem.label(class_="form-label-sm") }}
+                {{ elem(class_="form-control form-control-sm") }}
+            {% endif %}
+
+            {% if elem.errors %}
+                <ul class=errors>
+                    {% for error in elem.errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+    {% endfor %}
+{% endmacro %}

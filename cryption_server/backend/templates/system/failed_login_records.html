@@ -1,0 +1,32 @@
+{% extends "dashboard.html" %}
+
+{% block failed_login_records_list %}
+
+    {% if failed_login_records %}
+        <table class="table table-striped table-dark col-lg-12 ">
+            <thead>
+            <th scope="col">Id</th>
+            <th scope="col">User Id</th>
+            <th scope="col">Benutzername</th>
+            <th scope="col">IP Adresse</th>
+            <th scope="col">Zeitpunkt</th>
+            </thead>
+            <tbody>
+            {% for failed_login_record in failed_login_records %}
+                <tr>
+                    <th scope="row">{{ failed_login_record.get_id() }}</th>
+                    <td>{{ failed_login_record.get_user_id() }}</td>
+                    <td>{{ failed_login_record.get_username() }}</td>
+                    <td>{{ failed_login_record.get_ip_address() }}</td>
+                    <td>{{ failed_login_record.get_ctrl_time() }}</td>
+                    {% if current_user.is_admin %}
+                        <td class="remove"><a
+                                href="{{ url_for('backend.failed_login_records_delete',id=failed_login_record.get_id()) }}"><i
+                                class="material-icons">delete</i></a></td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}
