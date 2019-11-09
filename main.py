@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from cryption_server import create_app
+from app import create_app
 
 app = create_app()
 app.app_context().push()
 
 if __name__ == '__main__':
-    app.run(host="localhost")
+    app.run(debug=app.config["DEBUG"], host=app.config["HOST"], port=80)
