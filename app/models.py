@@ -186,7 +186,6 @@ class Encryption:
                 return True
         except Exception as error:
             my_logger.log(10, error)
-            pass
         return False
 
     @staticmethod
@@ -408,8 +407,8 @@ class Database:
                 column = d[0]
                 try:
                     column.decode("utf-8")
-                except:
-                    pass
+                except Exception as error:
+                    my_logger.log(10, error)
                 columns.append(column)
             print(sql)
             print(columns)
@@ -499,7 +498,6 @@ class Database:
                             self.set(key, self.get(key).decode('utf-8'))
                     except Exception as error:
                         my_logger.log(10, error)
-                        pass
                 self.decrypt_data()
                 return True
         except Exception as error:
@@ -534,7 +532,6 @@ class Database:
                         data[key] = data[key].decode('utf-8')
                 except Exception as error:
                     my_logger.log(10, error)
-                    pass
             update_string = ""
             columns = data.keys()
             max_keys = len(data.keys())
