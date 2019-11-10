@@ -1048,37 +1048,37 @@ class News(Database):
         return self.get("meta_title")
 
     def get_meta_image(self):
-        return ""
+        return self.get("meta_image")
 
     def get_main_image(self):
-        return ""
+        return self.get("main_image")
 
     def get_teaser_image(self):
-        return ""
+        return self.get("teaser_image")
 
     def get_news_images(self):
-        return ""
+        return self.get("news_images")
 
     def set_eid_custom(self, value):
-        self.set("", value)
+        self.set("eid_custom", value)
 
     def set_ctrl_datetime(self, value):
-        self.set("", value)
+        self.set("ctrl_datetime", value)
 
     def set_meta_description(self, value):
-        self.set("", value)
+        self.set("meta_description", value)
 
     def set_meta_title(self, value):
-        self.set("", value)
+        self.set("meta_title", value)
 
     def set_meta_image(self, value):
-        self.set("", value)
+        self.set("meta_image", value)
 
     def set_main_image(self, value):
-        self.set("", value)
+        self.set("main_image", value)
 
     def set_teaser_image(self, value):
-        self.set("", value)
+        self.set("teaser_image", value)
 
     def set_news_images(self, value):
-        self.set("", value)
+        self.set("news_images", value)

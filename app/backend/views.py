@@ -348,7 +348,8 @@ def news():
     Returns:
 
     """
-    return render_template("content/news/news.html")
+    news = News()
+    return render_template("content/news/news.html", news=news.object_list(news))
 
 
 @backend.route("/content/news/add_news/", methods=["GET", "POST"])
@@ -376,11 +377,11 @@ def add_news(id=0):
     else:
         print("id größer")
         if request.method == "POST":
-                if form.validate_on_submit():
-                    news.prepare_form_input(request.form)
-                    news.save()
-                else:
-                    form.get_error_messages()
+            if form.validate_on_submit():
+                news.prepare_form_input(request.form)
+                news.save()
+            else:
+                form.get_error_messages()
     return render_template("content/news/add_news.html", form=form, news=news)
 
 
@@ -431,11 +432,12 @@ def image_upload():
         file = request.files["file"]
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
+            id = escape(request.form["id"])
             type = escape(request.form["type"])
             module = escape(request.form["module"])
+            image_format = escape(request.form["image_format"])
             base_upload_path = current_app.config["ROOT_DIR"] + "static/uploads/"
-            final_upload_path = base_upload_path + type + "/" + module + "/"
-            print(final_upload_path)
+            final_upload_path = base_upload_path + type + "/" + module + "/" + id + "/"
             if not os.path.isdir(final_upload_path):
                 os.makedirs(final_upload_path)
 
