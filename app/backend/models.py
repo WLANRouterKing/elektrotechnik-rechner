@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 from datetime import datetime
-from flask import flash, escape
+from flask import flash
 from flask_login import UserMixin
 
 from ..models import Database, SystemMail

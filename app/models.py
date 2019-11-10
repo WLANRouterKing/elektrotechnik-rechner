@@ -5,16 +5,17 @@ import datetime
 from re import search
 import mysql.connector
 import copy
-from flask import jsonify, current_app, url_for, flash, escape
+from flask import jsonify, current_app, url_for, flash
 import nacl.utils
 import nacl.secret
 import nacl.encoding
 import nacl.pwhash
 import nacl.signing
-from flask_login import current_user
-from nacl import encoding, hash
+import nacl.hash
+from nacl import encoding
 from nacl.bindings import sodium_memcmp
 from nacl.public import PrivateKey
+from flask_login import current_user
 from app import Mail
 from flask_mail import Message
 from app import my_logger
@@ -25,7 +26,8 @@ class Encryption:
     Verschlüsselungs Klasse
     """
 
-    def create_random_token(self, length):
+    @staticmethod
+    def create_random_token(length):
         """
         Generiert einen Token mit random bytes
 
@@ -37,9 +39,10 @@ class Encryption:
 
         """
 
-        return self.bin_2_hex(nacl.utils.random(length))
+        return Encryption.bin_2_hex(nacl.utils.random(length))
 
-    def bin_2_hex(self, value):
+    @staticmethod
+    def bin_2_hex(value):
         """
         Konvertiert bytes in ihre hexadezimale darstellung
 
@@ -52,7 +55,8 @@ class Encryption:
         """
         return nacl.encoding.HexEncoder.encode(value).decode('utf-8')
 
-    def hex_2_bin(self, value):
+    @staticmethod
+    def hex_2_bin(value):
         """
         Konvertiert einen hexadezimalen String in einen Byte-String
 
@@ -65,7 +69,8 @@ class Encryption:
         """
         return nacl.encoding.HexEncoder.decode(value)
 
-    def create_sym_key(self):
+    @staticmethod
+    def create_sym_key():
         """
         Erstellt einen Schlüssel für die symmetrische Verschlüsselung
 
@@ -73,18 +78,20 @@ class Encryption:
             str: Der generierte Schlüssel
 
         """
-        return self.bin_2_hex(self.create_random_token(nacl.secret.SecretBox.KEY_SIZE))
+        return Encryption.bin_2_hex(Encryption.create_random_token(nacl.secret.SecretBox.KEY_SIZE))
 
-    def get_sym_key(self):
+    @staticmethod
+    def get_sym_key():
         """
         Liefert den Schlüssel für die Synchrone Verschlüsselung aus der App Config
 
         Returns:
             str: Den Schlüssel
         """
-        return self.hex_2_bin(current_app.config["SYM_KEY"])
+        return Encryption.hex_2_bin(current_app.config["SYM_KEY"])
 
-    def encrypt(self, data):
+    @staticmethod
+    def encrypt(data):
         """
         Verschlüsselt den übergebenen String mit dem symmetrischen Schlüssel
 
@@ -99,14 +106,15 @@ class Encryption:
             return ""
 
         try:
-            box = nacl.secret.SecretBox(self.get_sym_key())
+            box = nacl.secret.SecretBox(Encryption.get_sym_key())
             data_encrypted = box.encrypt(bytes(data, encoding="utf-8"), nonce=None, encoder=encoding.Base64Encoder)
             return data_encrypted.decode('utf-8')
         except Exception as error:
             my_logger.log(10, error)
         return data
 
-    def decrypt(self, data):
+    @staticmethod
+    def decrypt(data):
         """
         Entschlüsselt den übergebenen String mit dem symmetrischen Schlüssel
 
@@ -123,14 +131,15 @@ class Encryption:
             return ""
 
         try:
-            box = nacl.secret.SecretBox(self.get_sym_key())
+            box = nacl.secret.SecretBox(Encryption.get_sym_key())
             data_decrypted = box.decrypt(bytes(data, encoding="utf-8"), nonce=None, encoder=encoding.Base64Encoder)
             return data_decrypted.decode('utf-8')
         except Exception as error:
             my_logger.log(10, error)
-        return ""
+        return data
 
-    def sign_message(self, message):
+    @staticmethod
+    def sign_message(message):
         """
 
         Args:
@@ -145,7 +154,8 @@ class Encryption:
         verify_key_hex = verify_key.encode(encoder=nacl.encoding.HexEncoder)
         return signed, verify_key_hex
 
-    def hash_password(self, password):
+    @staticmethod
+    def hash_password(password):
         """
         Generiert einen sicheren Hash für das Passwort
 
@@ -158,7 +168,8 @@ class Encryption:
         """
         return nacl.pwhash.argon2id.str(password.encode())
 
-    def validate_hash(self, hash_string, string):
+    @staticmethod
+    def validate_hash(hash_string, string):
         """
         Validiert einen String und Hash
 
@@ -178,7 +189,8 @@ class Encryption:
             pass
         return False
 
-    def as_base_64(self, data):
+    @staticmethod
+    def as_base_64(data):
         """
         Base64 encoded einen String
 
@@ -191,7 +203,8 @@ class Encryption:
         """
         return nacl.encoding.Base64Encoder.encode(data)
 
-    def get_key_pair(self):
+    @staticmethod
+    def get_key_pair():
         """
         Generiert ein asynchrones Public/Private KeyPair
 
@@ -206,7 +219,8 @@ class Encryption:
         key_pair.set_public_key(public_key)
         return key_pair
 
-    def get_generic_hash(self, string):
+    @staticmethod
+    def get_generic_hash(string):
         hasher = nacl.hash.sha512
         return hasher(bytes(string, encoding="utf-8"), encoder=nacl.encoding.HexEncoder)
 

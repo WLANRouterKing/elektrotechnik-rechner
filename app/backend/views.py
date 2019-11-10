@@ -5,7 +5,6 @@ import os
 from flask import render_template, request, flash, redirect, url_for, escape, abort, make_response, current_app
 from validate_email import validate_email
 from werkzeug.utils import secure_filename
-
 from app.models import SystemMail, Session, News
 from . import backend
 from .models import BeUser, FailedLoginRecord

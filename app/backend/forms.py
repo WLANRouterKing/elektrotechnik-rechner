@@ -3,7 +3,7 @@
 from datetime import timedelta
 from flask import session, flash
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileRequired, FileAllowed
+from flask_wtf.file import FileAllowed
 from markupsafe import iteritems
 from wtforms import StringField, PasswordField, SubmitField, SelectField, DateTimeField, BooleanField, TextAreaField, FileField
 from wtforms.validators import DataRequired, EqualTo, Length, Email
