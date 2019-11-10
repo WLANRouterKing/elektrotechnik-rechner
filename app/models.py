@@ -410,8 +410,6 @@ class Database:
                 except Exception as error:
                     my_logger.log(10, error)
                 columns.append(column)
-            print(sql)
-            print(columns)
         except Exception as error:
             my_logger.log(10, error)
         finally:
@@ -592,8 +590,7 @@ class Database:
             connection.commit()
 
             if row > 0:
-                print(row)
-                self.set("id", row)
+                self.set_id(row)
                 success = row
 
             if row > 0 and self.item_editable:
@@ -1093,3 +1090,10 @@ class News(Database):
 
     def set_news_images(self, value):
         self.set("news_images", value)
+
+
+class Page(Database):
+
+    def __init__(self):
+        super().__init__()
+        self.table_name = "page"

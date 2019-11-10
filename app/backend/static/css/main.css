@@ -50,6 +50,10 @@ td.remove {
     cursor: pointer;
 }
 
+.clear {
+    clear: both;
+}
+
 #header,
 #aside,
 #content,
@@ -116,9 +120,9 @@ td.remove {
 }
 
 .fileupload-container .info,
-.fileupload-container .extensions{
+.fileupload-container .extensions {
     display: block;
-    margin-bottom:8px;
+    margin-bottom: 8px;
 }
 
 .dz-preview {
