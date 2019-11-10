@@ -6,4 +6,4 @@ app = create_app()
 app.app_context().push()
 
 if __name__ == '__main__':
-    app.run(debug=app.config["DEBUG"], host=app.config["HOST"], port=80)
+    app.run()

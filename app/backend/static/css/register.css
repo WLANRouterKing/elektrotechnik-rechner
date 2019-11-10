@@ -1,0 +1,21 @@
+#register-form {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-flow: column;
+    align-content: center;
+    align-items: center;
+    justify-content: center;
+    max-width: 400px;
+    text-align: center;
+}
+
+#content {
+    max-width: 100%;
+}
+
+#aside {
+    display: none;
+}

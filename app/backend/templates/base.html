@@ -1,0 +1,116 @@
+{% import '_helpers.html' as form_helper with context %}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Cryption Backend</title>
+    <meta name="robots" contend="noindex,nofollow">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('backend.static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('backend.static', filename='webfonts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('backend.static', filename='css/basic.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('backend.static', filename='css/dropzone.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('backend.static', filename='css/main.css') }}">
+    <script src="{{ url_for('backend.static', filename='js/jquery.min.js') }}"></script>
+    {% block stylesheets %}
+    {% endblock %}
+</head>
+<body>
+<div id="header">
+    <div class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#main-navigation"
+                aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        {% block navigation %}
+            <div id="main-navigation" class="collapse navbar-collapse">
+                <ul class="nav">
+                    {% for item in nav.main %}
+                        <li class="{{ 'active' if item.is_active else '' }} nav-item  nav1-item {{ '' if item.items else '' }}">
+                            {% if item.items %}
+                                <a class="nav-link nav1-link dropdown-toggle {{ 'active' if item.is_active else '' }} {{ item.html_attrs if item.html_attrs else '' }}"
+                                   data-toggle="dropdown" href="#">{{ item.label }}</a>
+                            {% else %}
+                                <a class="nav-link nav1-link {{ 'active' if item.is_active else '' }} {{ item.html_attrs if item.html_attrs else '' }}"
+                                   href="{{ item.url }}">{{ item.label }}</a>
+                            {% endif %}
+
+                            {% if item.items %}
+                                <ul class="dropdown-menu multi-level">
+                                    {% for child in item.items %}
+                                        <li class="{{ 'active' if child.is_active else '' }} nav-item nav2-item {{ 'dropdown-submenu dropright' if child.items else '' }}">
+                                            {% if child.items %}
+                                                <a class="nav-link nav2-link dropdown-toggle {{ 'active' if child.is_active else '' }} {{ child.html_attrs if child.html_attrs else '' }}"
+                                                   data-toggle="dropdown" href="#">{{ child.label }}</a>
+                                            {% else %}
+                                                <a class="nav-link nav2-link {{ 'active' if child.is_active else '' }} {{ child.html_attrs if child.html_attrs else '' }}"
+                                                   href="{{ child.url }}">{{ child.label }}</a>
+                                            {% endif %}
+                                            {% if child.items %}
+                                                <ul class="dropdown-menu">
+                                                    {% for child in child.items %}
+                                                        <li class="{{ 'active' if child.is_active else '' }} nav-item  nav3-item {{ '' if child.items else '' }}">
+                                                            <a class="nav-link nav3-link {{ 'active' if child.is_active else '' }} {{ child.html_attrs if child.html_attrs else '' }}"
+                                                               href="{{ child.url }}">{{ child.label }}</a>
+                                                        </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endblock %}
+    </div>
+    {% block header %}
+    {% endblock %}
+</div>
+
+<div id="status-bar">
+    {% block status_bar %}
+    {% endblock %}
+</div>
+
+{% block flashed_messages %}
+    <div class="container-fluid">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+{% endblock %}
+
+<div id="content">
+    {% block content %}
+    {% endblock %}
+</div>
+
+
+{% block footer %}
+    <div id="footer">
+
+    </div>
+{% endblock %}
+
+<script src="{{ url_for('backend.static', filename='js/bootstrap.min.js') }}"></script>
+
+{% block footer_script_start %}
+{% endblock %}
+
+<script src="{{ url_for('backend.static', filename='js/dropzone.min.js') }}"></script>
+<script src="{{ url_for('backend.static', filename='js/ckeditor.js') }}"></script>
+<script src="{{ url_for('backend.static', filename='js/main.js') }}"></script>
+
+{% block footer_script_end %}
+{% endblock %}
+
+</body>
+</html>

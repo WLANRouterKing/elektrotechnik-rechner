@@ -1,0 +1,20 @@
+version: "2"
+services:
+  app:
+    build: ./app
+    links:
+      - db
+    ports:
+      - "5000:5000"
+
+  db:
+    image: mysql:5.7
+    ports:
+      - "32000:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mysql
+      MYSQL_USER: test
+      MYSQL_PASSWORD: test1234
+    volumes:
+      - ./docker/data/db:/var/lib/mysql
