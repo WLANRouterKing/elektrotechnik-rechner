@@ -105,4 +105,4 @@ venv.bak/
 /myproject.ini
 /myproject.sock
 /log.debug
-/static/uploads/
+/static/uploads/*
