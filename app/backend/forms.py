@@ -199,15 +199,21 @@ class CustomForm(FlaskForm):
     def render(self):
         html = '<form id="{0}" method="{1}" action="{2}">'.format(self.form_id, self.method, self.action)
         if self.display_tabs:
+            html += "<ul class='nav nav-tabs'>"
+            for tab in self.tabs:
+                html += "<li class='nav-item'>"
+                html += '<a class="nav-link">{0}</a>'.format(str(tab).capitalize())
+                html += "</li>"
+            html += "</ul>"
             for tab in self.tabs:
                 html += '<div id="tab-{0}" class="container-fluid">'.format(tab)
                 for element in self.get_elements(tab):
                     html += self.get_element_html(element)
                 html += "</div>"
-            html += '</form>'
         else:
             for element in self.get_all_elements():
                 html += self.get_element_html(element)
+        html += '</form>'
         return html
 
 
