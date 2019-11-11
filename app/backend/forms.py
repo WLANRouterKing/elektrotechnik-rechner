@@ -128,8 +128,6 @@ class CustomForm(FlaskForm):
             element_id = element.label.field_id
 
             if search(prefix, element_id) is not None:
-                print(prefix)
-                print(element_id)
                 elements_wanted.append(element)
         if len(elements_wanted) <= 0 and prefix == "content":
             return self.get_content_elements()
@@ -186,8 +184,6 @@ class CustomForm(FlaskForm):
         if element_type is not None:
             if element.widget.type == "DateTimeField":
                 element_classes.append("datepicker")
-
-        string_kw_args = '"{0}"'.format(' '.join(element_classes))
 
         if element_label is not None:
             html += str(element_label)

@@ -792,6 +792,9 @@ class Database:
             return rows[0]
         return 0
 
+    def get_html_overview(self, limit=30, paged=True):
+        return ""
+
 
 class Session(Database):
 
