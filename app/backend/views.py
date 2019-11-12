@@ -374,7 +374,6 @@ def add_news(id=0):
         news.init_default()
         news.save()
     else:
-        print("id größer")
         if request.method == "POST":
             if form.validate_on_submit():
                 news.prepare_form_input(request.form)
