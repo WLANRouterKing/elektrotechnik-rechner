@@ -34,7 +34,7 @@
                     <td class="signal"><i
                             class="material-icons">{{ 'check_circle' if user.is_authenticated else 'error' }}</i></td>
                     {% if current_user.is_admin %}
-                        <td class="edit"><a href="{{ url_for('backend.be_user_edit',user_id=user.get_id()) }}"><i
+                        <td class="edit"><a href="{{ url_for('backend.edit_be_user',id=user.get_id()) }}"><i
                                 class="material-icons">edit</i></a></td>
                     {% endif %}
                     {% if current_user.is_admin %}

@@ -3,10 +3,11 @@
 {% block editor %}
     <div class="col-lg-4">
         {% if form %}
-            <form id="register-form" method="post"
-                  action="{{ url_for('backend.add_news', id=news.get_id()) if news.get_id() else url_for('backend.add_news', id=0) }}">
+            {% if form_object %}
+                {{ form_helper.render_form(form,form_object) }}
+            {% else %}
                 {{ form_helper.render_form(form) }}
-            </form>
+            {% endif %}
         {% endif %}
     </div>
 {% endblock %}

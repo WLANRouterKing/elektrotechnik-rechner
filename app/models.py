@@ -692,14 +692,12 @@ class Database:
 
     def object_list(self, object=None, sql_where=""):
         list_id = self.id_list(sql_where)
-        final_list = list()
         for id in list_id:
             # objekt kopieren
             single_object = copy.copy(object)
             single_object.set("id", id)
             single_object.load()
-            final_list.append(single_object)
-        return final_list
+            yield single_object
 
     def encrypt_data(self):
         data = dict()

@@ -13,23 +13,26 @@ $(document).ready(function () {
     /**
      * CKEditor initialisieren
      */
-    ClassicEditor
-        .create(document.querySelector(".texteditor"), {
-            toolbar: ["heading", "|", "bold", "italic", "link", "bulletedList", "numberedList", "blockQuote"],
-            heading: {
-                options: [
-                    {model: "paragraph", title: "Paragraph", class: "ck-heading_paragraph"},
-                    {model: "heading1", view: "h1", title: "Heading 1", class: "ck-heading_heading1"},
-                    {model: "heading2", view: "h2", title: "Heading 2", class: "ck-heading_heading2"}
-                ]
-            }
-        })
-        .then(editor => {
-            console.log(editor);
-        })
-        .catch(error => {
-            console.error(error);
-        });
+    $.each(document.getElementsByClassName('texteditor'), function (index, object) {
+        ClassicEditor
+            .create(object, {
+                toolbar: ["heading", "|", "bold", "italic", "link", "bulletedList", "numberedList", "blockQuote"],
+                heading: {
+                    options: [
+                        {model: "paragraph", title: "Paragraph", class: "ck-heading_paragraph"},
+                        {model: "heading1", view: "h1", title: "Heading 1", class: "ck-heading_heading1"},
+                        {model: "heading2", view: "h2", title: "Heading 2", class: "ck-heading_heading2"}
+                    ]
+                }
+            })
+            .then(editor => {
+                console.log(editor);
+            })
+            .catch(error => {
+                console.error(error);
+            });
+    });
+
 
     /**
      * Input Type Checkbox manipulieren -> WT Forms sendet ein "y" statt 1
@@ -65,7 +68,7 @@ $(document).ready(function () {
         $(this).parent(".fileupload-container").append("<span class='info' style='display:block;'>" + infoString.toString() + "</span>");
     });
 
-    $(".fileupload").hide()
+    $(".fileupload").hide();
 
     $(".fileupload-container").dropzone({
         url: "/backend/ajax/image_upload",
@@ -88,6 +91,15 @@ $(document).ready(function () {
         sending: function (e, xhr, formData) {
 
         }
+    });
+
+    $('#tab-meta, #tab-ctrl').hide();
+
+    $('.nav-tabs .nav-link').bind("click touch", function () {
+        let tab_id = "#tab-" + $(this).attr('data-tab-id');
+        console.log(tab_id)
+        $('.tab').hide();
+        $(tab_id).show();
     });
 
 });

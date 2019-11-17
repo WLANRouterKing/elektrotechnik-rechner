@@ -8,7 +8,7 @@ from werkzeug.utils import secure_filename
 from app.models import SystemMail, Session, News
 from . import backend
 from .models import BeUser, FailedLoginRecord
-from .forms import LoginForm, AddUserForm, EditUserForm, EditAccountForm, NewsEditorForm
+from .forms import LoginForm, AddUserForm, EditBeUserForm, EditAccountForm, NewsEditorForm, AddBeUserForm, EditUserForm
 from flask_login import login_user, current_user, login_required, logout_user
 from app import login_manager, my_logger
 from .nav import create_nav
@@ -102,9 +102,9 @@ def account_edit():
     return render_template("account/edit_account.html", form=form)
 
 
-@backend.route("/be_user/be_user_edit/<int:user_id>", methods=["GET", "POST"])
+@backend.route("/be_user/edit_be_user/<int:id>", methods=["GET", "POST"])
 @login_required
-def be_user_edit(user_id):
+def edit_be_user(id=0):
     """
 
     Args:
@@ -113,10 +113,10 @@ def be_user_edit(user_id):
     Returns:
 
     """
-    form = EditUserForm()
+    form = EditBeUserForm()
     user = BeUser()
-    if user_id > 0:
-        user.set("id", user_id)
+    if id > 0:
+        user.set("id", id)
         user.load()
     if request.method == "GET":
         if current_user.is_admin:
@@ -134,7 +134,7 @@ def be_user_edit(user_id):
                 flash("Sie haben ein falsches Passwort eingegeben", 'danger')
         else:
             form.get_error_messages()
-    return render_template("be_user/edit_be_user.html", form=form, user=user)
+    return render_template("be_user/edit_be_user.html", id=user.get_id(), form=form, user=user)
 
 
 @backend.route("/be_user", methods=["GET"])
@@ -152,13 +152,13 @@ def be_user():
 
 @backend.route("/be_user/add_be_user", methods=["GET", "POST"])
 @login_required
-def be_user_add():
+def add_be_user():
     """
 
     Returns:
 
     """
-    form = AddUserForm(request.form)
+    form = AddBeUserForm()
     if current_user.is_admin:
         if request.method == "POST" and form.validate_on_submit():
             be_user = BeUser()
@@ -228,7 +228,7 @@ def reports():
 
     """
     if current_user.is_moderator or current_user.is_admin:
-        return render_template("system/reports.html")
+        return render_template("/system/reports.html")
     flash("Du hast nicht die benötigten Rechte", "danger")
     return redirect(url_for("backend.dashboard"))
 
@@ -274,6 +274,7 @@ def load_user(user_id):
             session_user.user_agent = request.user_agent
             session_user.token = session.get_token()
             session_user.timestamp = session.get_timestamp()
+            # todo: nur session user übergeben
             hash = session.get_user_hash_string(session_user.id, session_user.user_agent, session_user.ip_address, session_user.token, session_user.timestamp)
             if session.is_valid(session.encryption.get_generic_hash(hash)):
                 return session_user
@@ -295,13 +296,14 @@ def user():
 
 @backend.route("/user/add_user", methods=["GET", "POST"])
 @login_required
-def user_add():
+def add_user():
     """
 
     Returns:
 
     """
-    return render_template("dashboard.html")
+    form = AddUserForm()
+    return render_template("user/add_user.html", form=form)
 
 
 @backend.route("/user/activate/<int:user_id>/<string:activation_token>", methods=["GET"])
@@ -364,12 +366,10 @@ def add_news(id=0):
     id = int(id)
     form = NewsEditorForm()
     news = News()
-    news.set_id(id)
-    news.load()
 
-    if request.method == "GET":
-        form.get_editor_edit_message(news)
-
+    if id > 0:
+        news.set_id(id)
+        news.load()
     if id <= 0:
         news.init_default()
         news.save()
@@ -380,7 +380,7 @@ def add_news(id=0):
                 news.save()
             else:
                 form.get_error_messages()
-    return render_template("content/news/add_news.html", form=form, news=news)
+    return render_template("content/news/add_news.html", form=form, form_object=news)
 
 
 @backend.route("/content/news/edit_news/<int:id>", methods=["GET", "POST"])

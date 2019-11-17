@@ -21,10 +21,10 @@ def create_nav():
     if current_user.is_admin:
         navbar_main_items.append(nav.Item('Backend Benutzer', 'backend.be_user', items=[
             nav.Item('Übersicht', 'backend.be_user'),
-            nav.Item('Benutzer hinzufügen', 'backend.be_user_add')
+            nav.Item('Benutzer hinzufügen', 'backend.add_be_user')
         ]))
         navbar_main_items.append(nav.Item('Benutzer', 'backend.user', items=[
-            nav.Item('Benutzer hinzufügen', 'backend.user_add')
+            nav.Item('Benutzer hinzufügen', 'backend.add_user')
         ]))
 
     # navigationspunkte für admins und moderatoren

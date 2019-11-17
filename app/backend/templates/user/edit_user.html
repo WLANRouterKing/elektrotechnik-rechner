@@ -1,13 +1,10 @@
 {% extends "dashboard.html" %}
 
-{% block be_users_edit %}
+{% block editor %}
     {% if user %}
         <div class="col-lg-4">
-        <form id="edit-user-form" method="post" action="{{ url_for('backend.be_user_edit',user_id=user.get_id()) }}">
-            {{ form_helper.render_form(form) }}
-        </form>
+        {{ form_helper.render_form(form) }}
     {% endif %}
 </div>
 
-    <a class="btn btn-dark link-back" href="{{ url_for('backend.be_user') }}">Zurück zur Übersicht</a>
 {% endblock %}
