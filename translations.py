@@ -1,0 +1,30 @@
+############################################################################
+# Column Labels
+############################################################################
+COLUMN_LABELS = {
+    "id": {"DE": "Id", "EN": "Id"},
+    "username": {"DE": "Benutzername", "EN": "Username"},
+    "password": {"DE": "Passwort", "EN": "Password"},
+    "email": {"DE": "Benutzername", "EN": "E-Mail"},
+    "ctrl_access_level": {"DE": "Benutzergruppe", "EN": "Usergroup"},
+    "ctrl_last_login": {"DE": "Letzter Login", "EN": "Last Login"},
+    "ctrl_active": {"DE": "Aktiv", "EN": "Active"},
+    "activation_token": {"DE": "Aktivierungstoken", "EN": "Activation Token"},
+    "ctrl_failed_logins": {"DE": "Fehlgeschlagene Loginversuche", "EN": "Failed Logins"},
+    "ctrl_locked": {"DE": "Gesperrt", "EN": "Locked"},
+    "ctrl_lockout_time": {"DE": "Sperrzeit", "EN": "Time Lockout"},
+    "ctrl_deleted": {"DE": "Gelöscht", "EN": "Deleted"},
+    "user_id": {"DE": "Benutzer", "EN": "Username"},
+    "eid": {"DE": "Eid", "EN": "Eid"},
+    "eid_custom": {"DE": "Benutzerdefinierte Eid", "EN": "Custom Eid"},
+    "title": {"DE": "Titel", "EN": "Title"},
+    "intro_text": {"DE": "Intro-Text", "EN": "Intro-Text"},
+    "text": {"DE": "Text", "EN": "Text"},
+    "ctrl_datetime": {"DE": "Datum", "EN": "Date"},
+    "meta_description": {"DE": "Meta Beschreibung", "EN": "Meta Description"},
+    "meta_title": {"DE": "Meta Titel", "EN": "Meta Title"},
+    "meta_image": {"DE": "Meta Bild", "EN": "Meta Picture"},
+    "main_image": {"DE": "Hauptbild", "EN": "Main Image"},
+    "teaser_image": {"DE": "Teaser Bild", "EN": "Teaser Image"},
+    "news_images": {"DE": "Bilder", "EN": "Images"},
+}

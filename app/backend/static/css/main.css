@@ -45,6 +45,11 @@ table {
     margin: 0 auto;
 }
 
+td {
+    max-width: 200px;
+    overflow: hidden;
+}
+
 td.edit,
 td.remove {
     cursor: pointer;
@@ -94,10 +99,8 @@ td.remove {
     margin-right: 25px;
 }
 
-.nav-link:hover,
-.nav-item.show,
-.nav-item.show .nav-link,
-.nav-link.active {
+
+.nav-item.show .nav-link {
     background: #fff;
     color: #212529 !important;
 }

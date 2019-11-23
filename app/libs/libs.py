@@ -1,5 +1,5 @@
 from flask_login import current_user
-from config import COLUMN_LABELS
+from translations import COLUMN_LABELS
 
 
 def translate_column(key):

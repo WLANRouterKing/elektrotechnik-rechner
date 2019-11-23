@@ -1,48 +1,7 @@
 {% extends "dashboard.html" %}
 
 {% block editor %}
-    {% if users %}
-        <table class="table table-striped table-dark col-lg-12 ">
-            <thead>
-            <th scope="col">Id</th>
-            <th scope="col">Name</th>
-            <th scope="col">Letzter Login</th>
-            <th scope="col">Gesperrt bis</th>
-            <th scope="col">Authentication Token</th>
-            <th scope="col">Aktiv</th>
-            <th scope="col">Gesperrt</th>
-            <th scope="col">Online</th>
-            <th scope="col"></th>
-            <th scope="col"></th>
-            </thead>
-            <tbody>
-            {% for user in users %}
-                <tr>
-                    <th scope="row">{{ user.get_id() }}</th>
-                    <td>{{ user.get_username() }}</td>
-                    <td>{{ user.get_ctrl_last_login() }}</td>
-                    <td>{{ user.get_ctrl_lockout_time() }}</td>
-                    <td class="signal"><i
-                            class="material-icons">{{ 'check_circle' if user.get_activation_token() else 'error' }}</i>
-                    </td>
-                    <td class="signal"><i
-                            class="material-icons">{{ 'check_circle' if user.get_ctrl_active() else 'error' }}</i>
-                    </td>
-                    <td class="signal"><i
-                            class="material-icons">{{ 'error' if user.get_ctrl_locked() else 'check_circle' }}</i>
-                    </td>
-                    <td class="signal"><i
-                            class="material-icons">{{ 'check_circle' if user.is_authenticated else 'error' }}</i></td>
-                    {% if current_user.is_admin %}
-                        <td class="edit"><a href="{{ url_for('backend.edit_be_user',id=user.get_id()) }}"><i
-                                class="material-icons">edit</i></a></td>
-                    {% endif %}
-                    {% if current_user.is_admin %}
-                        <td class="remove"><i class="material-icons">delete</i></td>
-                    {% endif %}
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+    {% if be_user %}
+        {{ be_user.get_list_html()|safe }}
     {% endif %}
 {% endblock %}

@@ -19,7 +19,7 @@ def create_nav():
 
     # navigationpunkte für admins
     if current_user.is_admin:
-        navbar_main_items.append(nav.Item('Backend Benutzer', 'backend.be_user', items=[
+        navbar_main_items.append(nav.Item('Backend Benutzer', 'backend.be_user', html_attrs={'class': ['home']}, items=[
             nav.Item('Übersicht', 'backend.be_user'),
             nav.Item('Benutzer hinzufügen', 'backend.add_be_user')
         ]))

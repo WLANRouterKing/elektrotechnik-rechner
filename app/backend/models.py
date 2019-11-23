@@ -115,11 +115,14 @@ class BeUser(Database):
     def __init__(self):
         super().__init__()
         self.item_editable = True
+        self.class_label = "Backend Benutzer"
         self.table_name = "be_user"
-        self.temp_password = ""
+        self.edit_node = "edit_" + self.table_name
+        self.delete_node = "delete_" + self.table_name
         self.ip_address = ""
         self.exists = False
         self.settings = None
+        self.temp_password = ""
 
     @property
     def is_admin(self):

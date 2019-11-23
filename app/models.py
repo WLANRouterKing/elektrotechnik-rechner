@@ -19,6 +19,7 @@ from flask_login import current_user
 from app import Mail
 from flask_mail import Message
 from app import my_logger
+from .libs.libs import translate_column
 
 
 class Encryption:
@@ -243,6 +244,8 @@ class Database:
         self.item_editable = True
         self.class_label = ""
         self.table_name = ""
+        self.edit_node = ""
+        self.delete_node = ""
         self.arrData = dict()
         self.put_into_trash = True
         self.exclude_from_encryption = ["id", "password", "username", "user_id", "ctrl"]
@@ -699,6 +702,37 @@ class Database:
             single_object.load()
             yield single_object
 
+    def get_list_html(self):
+        object = self
+        columns = self.get_columns()
+        html = '<table class="table table-striped table-dark col-lg-12 ">'
+        html += '<thead>'
+        for column in columns:
+            html += '<th scope="col">' + translate_column(column) + '</th>'
+        html += '</thead>'
+        for item in self.object_list(object):
+            html += '<tr>'
+
+            for key in item.arrData:
+                if key == 'id' or search('_id', key):
+                    html += '<th scope="row">' + str(item.get(key)) + '</th>'
+                else:
+                    html += '<td>' + str(item.get(key)) + '</td>'
+
+            if current_user.is_admin:
+                html += '<td class="edit">'
+                url = "backend." + self.edit_node
+                html += '<a href="' + url_for(url, id=item.get_id()) + '" class="oi oi-pencil" title="' + self.class_label + ' bearbeiten" aria-hidden="true"></a>'
+                html += '</td>'
+                html += '<td class="remove">'
+                url = "backend." + self.delete_node
+                html += '<a href="' + url_for(url, id=item.get_id()) + '" class="oi oi-trash" title="' + self.class_label + ' löschen" aria-hidden="true"></a>'
+                html += '</td>'
+            html += '</tr>'
+
+        html += '</table>'
+        return html
+
     def encrypt_data(self):
         data = dict()
         for key in self.arrData:
@@ -789,9 +823,6 @@ class Database:
         if rows is not None:
             return rows[0]
         return 0
-
-    def get_html_overview(self, limit=30, paged=True):
-        return ""
 
 
 class Session(Database):
@@ -1043,6 +1074,8 @@ class News(Database):
         super().__init__()
         self.table_name = "news"
         self.class_label = "News-Meldung"
+        self.edit_node = "edit_" + self.table_name
+        self.delete_node = "delete_" + self.table_name
 
     def get_eid_custom(self):
         return self.get("eid_custom")

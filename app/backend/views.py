@@ -102,6 +102,27 @@ def account_edit():
     return render_template("account/edit_account.html", form=form)
 
 
+@backend.route("/be_user/delete_be_user/<int:id>", methods=["POST"])
+@login_required
+def delete_be_user(id=0):
+    """
+
+    Args:
+        user_id:
+
+    Returns:
+
+    """
+
+    if id > 0:
+        user = BeUser()
+        user.set("id", id)
+        user.load()
+        user.delete()
+
+    return render_template("be_user/be_user.html", user=BeUser())
+
+
 @backend.route("/be_user/edit_be_user/<int:id>", methods=["GET", "POST"])
 @login_required
 def edit_be_user(id=0):
@@ -145,9 +166,7 @@ def be_user():
     Returns:
 
     """
-    be_user = BeUser()
-    be_users = be_user.object_list(be_user)
-    return render_template("be_user/be_user.html", users=be_users)
+    return render_template("be_user/be_user.html", be_user=BeUser())
 
 
 @backend.route("/be_user/add_be_user", methods=["GET", "POST"])
@@ -349,37 +368,23 @@ def news():
     Returns:
 
     """
-    news = News()
-    return render_template("content/news/news.html", news=news.object_list(news))
+    return render_template("content/news/news.html", news=News())
 
 
-@backend.route("/content/news/add_news/", methods=["GET", "POST"])
-@backend.route("/content/news/add_news/<int:id>", methods=["GET", "POST"])
+@backend.route("/content/news/add_news/", methods=["GET"])
 @login_required
-def add_news(id=0):
+def add_news():
     """
 
     Returns:
 
     """
 
-    id = int(id)
     form = NewsEditorForm()
     news = News()
+    news.init_default()
+    news.save()
 
-    if id > 0:
-        news.set_id(id)
-        news.load()
-    if id <= 0:
-        news.init_default()
-        news.save()
-    else:
-        if request.method == "POST":
-            if form.validate_on_submit():
-                news.prepare_form_input(request.form)
-                news.save()
-            else:
-                form.get_error_messages()
     return render_template("content/news/add_news.html", form=form, form_object=news)
 
 
@@ -391,7 +396,41 @@ def edit_news(id):
     Returns:
 
     """
-    return render_template("content/news/edit_news.html")
+    form = NewsEditorForm()
+    news = News()
+
+    if id > 0:
+        news.set_id(id)
+        news.load()
+
+    if request.method == "GET":
+        form.init_values(news)
+
+    if request.method == "POST":
+        if form.validate_on_submit():
+            news.prepare_form_input(request.form)
+            news.save()
+        else:
+            form.get_error_messages()
+    return render_template("content/news/edit_news.html", form=form)
+
+
+@backend.route("/content/news/delete_news/<int:id>", methods=["POST"])
+@login_required
+def delete_news(id):
+    """
+
+    Returns:
+
+    """
+
+    if id > 0:
+        news = News()
+        news.set_id(id)
+        news.load()
+        news.delete()
+
+    return render_template("content/news/news.html", news=News())
 
 
 @backend.route("/logout", methods=["GET"])
