@@ -45,6 +45,8 @@ class AddBeUserForm(CustomForm):
 
 
 class EditBeUserForm(CustomForm):
+    ctrl_login_message = BooleanField("Soll eine Benachrichtung bei erfolgreichem Login versendet werden ?", false_values=('false', 'false'))
+    ctrl_lockout_message = BooleanField("Soll eine Benachrichtung versendet werden wenn der Account ausgesperrt wird ?", false_values=('false', 'false'))
     ctrl_active = BooleanField("Aktiv", false_values=('false', 'false'))
     ctrl_locked = BooleanField("Gesperrt", false_values=('false', 'false'))
     id = HiddenField()
@@ -61,24 +63,6 @@ class EditBeUserForm(CustomForm):
         self.type = "be_user"
         self.page = "edit_be_user"
         self.module = "be_user"
-
-
-class AddUserForm(AddBeUserForm):
-
-    def __init__(self):
-        super().__init__()
-        self.type = "user"
-        self.page = "add_user"
-        self.module = "user"
-
-
-class EditUserForm(EditBeUserForm):
-
-    def __init__(self):
-        super().__init__()
-        self.type = "user"
-        self.page = "edit_user"
-        self.module = "user"
 
 
 class ImageUploadField(FileField):

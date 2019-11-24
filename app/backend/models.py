@@ -144,6 +144,14 @@ class BeUser(Database):
     def is_locked(self):
         return bool(self.get_ctrl_locked())
 
+    @property
+    def send_login_message(self):
+        return bool(self.get_as_int("ctrl_login_message"))
+
+    @property
+    def send_lockout_message(self):
+        return bool(self.get_as_int("ctrl_lockout_message"))
+
     def get_password(self):
         return self.get("password")
 
@@ -235,7 +243,7 @@ class BeUser(Database):
                 self.item_editable = False
                 self.save()
                 self.item_editable = True
-                if True:
+                if self.send_login_message:
                     system_mail.send_be_user_login_message(self)
                 return True
             else:
@@ -250,7 +258,7 @@ class BeUser(Database):
                     self.set_ctrl_locked(1)
                     self.set_ctrl_failed_logins(3)
                     self.set_ctrl_lockout_time(date)
-                    if True:
+                    if self.send_lockout_message:
                         system_mail.send_be_user_lockout_message(self)
                 self.save()
         flash("Login nicht erfolgreich", 'danger')

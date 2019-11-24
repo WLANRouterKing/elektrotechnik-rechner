@@ -1,7 +1,7 @@
 {% extends "dashboard.html" %}
 
 {% block editor %}
-    {% if system_mail %}
-        {{ system_mail.get_list_html()|safe }}
+    {% if system_setting %}
+        {{ system_setting.get_list_html()|safe }}
     {% endif %}
 {% endblock %}

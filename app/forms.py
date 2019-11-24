@@ -15,7 +15,7 @@ class CustomForm(FlaskForm):
         super().__init__()
         self.id = 0
         self.display_tabs = True
-        self.filter_label = ["csrf_token", "submit"]
+        self.filter_label = ["csrf_token", "submit", "Id"]
         self.tabs = ["content", "meta", "ctrl"]
         self.method = "post"
         self.type = None
@@ -54,8 +54,10 @@ class CustomForm(FlaskForm):
     @property
     def action(self):
         page = "{0}.{1}".format(self.blueprint_name, self.page)
-        if self.id > 0:
+        print(self.id)
+        if int(self.id) > 0:
             return url_for(page, id=self.id)
+        print(page)
         return url_for(page)
 
     def get_all_elements(self):
@@ -131,13 +133,12 @@ class CustomForm(FlaskForm):
         return html
 
     def get_element_html(self, element):
+        print(element)
         html = "<div class='form-group'>"
         element_type = getattr(element.widget, 'type', None)
         element_input_type = getattr(element.widget, 'input_type', None)
         element_label = ""
         element_classes = {"class": ""}
-        element_classes["class"] += "form-control "
-        element_classes["class"] += "form-control-sm "
 
         for exclude_label in self.filter_label:
             if str(element.label.field_id).lower() == str(exclude_label).lower():
@@ -150,8 +151,14 @@ class CustomForm(FlaskForm):
             element_classes["class"] += "texteditor "
 
         if element_input_type is not None:
+
+            if element.widget.input_type != "checkbox":
+                element_classes["class"] += "form-control "
+                element_classes["class"] += "form-control-sm "
+
             if element.widget.input_type == "checkbox":
-                element_classes["class"] += "form-inline "
+                html = "<div class='form-group form-check'>"
+                element_classes["class"] += "form-check-input "
             elif element.widget.input_type == "submit":
                 element_label = None
                 element_classes["class"] += "btn-dark "
@@ -163,16 +170,24 @@ class CustomForm(FlaskForm):
 
         if element_type is not None:
             if element.widget.type == "DateTimeField":
+                element_classes["class"] += "form-control "
+                element_classes["class"] += "form-control-sm "
                 element_classes["class"] += "datepicker "
 
         element.render_kw = element_classes
 
+        if element_input_type is not None:
+            if element.widget.input_type == "checkbox":
+                html += str(element)
+                if element_label is not None:
+                    html += str(element_label)
+                html += "</div>"
+                return html
+
         if element_label is not None:
             html += str(element_label)
-            html += "<div class='clear'></div>"
         html += str(element)
         html += "</div>"
-        print("element html" + html)
         return html
 
     def render(self, form_object=None):

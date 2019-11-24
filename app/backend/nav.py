@@ -23,16 +23,14 @@ def create_nav():
             nav.Item('Übersicht', 'backend.be_user'),
             nav.Item('Benutzer hinzufügen', 'backend.add_be_user')
         ]))
-        navbar_main_items.append(nav.Item('Benutzer', 'backend.user', items=[
-            nav.Item('Benutzer hinzufügen', 'backend.add_user')
-        ]))
 
     # navigationspunkte für admins und moderatoren
     if current_user.is_admin or current_user.is_moderator:
         navbar_main_items.append(nav.Item('System', 'backend.system', items=[
             nav.Item("Fehlgeschlagene Login Versuche", 'backend.failed_login_records'),
             nav.Item("System Mails", 'backend.system_mails'),
-            nav.Item('Reports', 'backend.reports')
+            nav.Item("Einstellungen", 'backend.system_settings'),
+            nav.Item("Papierkorb", 'backend.trash')
         ]))
 
     # navigationspunkt account

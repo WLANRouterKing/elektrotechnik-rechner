@@ -720,14 +720,16 @@ class Database:
                     html += '<td>' + str(item.get(key)) + '</td>'
 
             if current_user.is_admin:
-                html += '<td class="edit">'
-                url = "backend." + self.edit_node
-                html += '<a href="' + url_for(url, id=item.get_id()) + '" class="oi oi-pencil" title="' + self.class_label + ' bearbeiten" aria-hidden="true"></a>'
-                html += '</td>'
-                html += '<td class="remove">'
-                url = "backend." + self.delete_node
-                html += '<a href="' + url_for(url, id=item.get_id()) + '" class="oi oi-trash" title="' + self.class_label + ' löschen" aria-hidden="true"></a>'
-                html += '</td>'
+                if self.item_editable:
+                    html += '<td class="edit">'
+                    url = "backend." + self.edit_node
+                    html += '<a href="' + url_for(url, id=item.get_id()) + '" class="oi oi-pencil" title="' + self.class_label + ' bearbeiten" aria-hidden="true"></a>'
+                    html += '</td>'
+                if self.put_into_trash:
+                    html += '<td class="remove">'
+                    url = "backend." + self.delete_node
+                    html += '<a href="' + url_for(url, id=item.get_id()) + '" class="oi oi-trash" title="' + self.class_label + ' löschen" aria-hidden="true"></a>'
+                    html += '</td>'
             html += '</tr>'
 
         html += '</table>'
@@ -763,7 +765,6 @@ class Database:
     """
 
     def save(self):
-        print(self.arrData)
         if self.get_id() > 0:
             return self.update()
         else:
@@ -823,6 +824,14 @@ class Database:
         if rows is not None:
             return rows[0]
         return 0
+
+
+class SystemSettings(Database):
+    def __init__(self):
+        super().__init__()
+        self.item_editable = True
+        self.table_name = "system_settings"
+        self.put_into_trash = False
 
 
 class Session(Database):
@@ -943,7 +952,7 @@ class SystemMail(Database):
         username = be_user.get("username")
         email = be_user.get("email")
         activation_token = be_user.get("activation_token")
-        link = current_app.config["HOST"] + ":" + str(current_app.config["HOST_PORT"]) + url_for("backend.user_activate", user_id=be_user.get_id(), activation_token=activation_token)
+        link = current_app.config["HOST"] + ":" + str(current_app.config["HOST_PORT"]) + url_for("backend.be_user_activate", user_id=be_user.get_id(), activation_token=activation_token)
         self.set_subject("Du wurdest hinzugefügt")
         self.add_line("""<h2>Hallo {0}</h2></br></br>""".format(username))
         self.add_line("""<p>Du wurdest zum Cryption Backend hinzugefügt<p></br>""")
@@ -986,27 +995,6 @@ class SystemMail(Database):
             my_logger.log(10, error)
 
         return False
-
-
-class KeyPair(Database):
-
-    def __init__(self):
-        super().__init__()
-        self.item_editable = False
-        self.table_name = "keypair"
-        self.put_into_trash = False
-
-    def get_private_key(self):
-        return self.get("private_key")
-
-    def get_public_key(self):
-        return self.get("public_key")
-
-    def set_private_key(self, value):
-        self.set("private_key", value)
-
-    def set_public_key(self, value):
-        self.set("public_key", value)
 
 
 class Trash(Database):
