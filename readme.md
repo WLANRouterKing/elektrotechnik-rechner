@@ -32,7 +32,6 @@ Standardmäßige implementierung von häufig benötigten Seitenelementen und Mod
 - ...
 
 Ein internes [Web-Analytics](https://de.wikipedia.org/wiki/Web_Analytics) zur Auswertung von Webseiten Besuchen und Besucherverhalten.
-Zur Datenaufbereitung und Auswertung wird [Machine Learning](https://de.wikipedia.org/wiki/Maschinelles_Lernen) eingesetzt.
 
 Flask wird (hoffentlich) in Zukunft die Unterstützung von [ASGI](https://asgi.readthedocs.io/en/latest/) bereitstellen.
 So können aufwendige Tasks asynchron abgearbeitet werden was die Performance einer Webanwendung enorm steigert.

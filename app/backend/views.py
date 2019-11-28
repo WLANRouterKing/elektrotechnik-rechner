@@ -221,7 +221,6 @@ def be_user_activate(user_id, activation_token):
             be_user.set("activation_token", be_user.generate_activation_token())
             be_user.save()
             flash("Dein Account wurde erfolgreich aktiviert", "success")
-            return redirect(url_for("backend.login"))
     flash("Aktivierung fehlgeschlagen", 'danger')
     return redirect(url_for("backend.login"))
 
