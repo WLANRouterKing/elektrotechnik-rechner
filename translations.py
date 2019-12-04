@@ -12,7 +12,7 @@ COLUMN_LABELS = {
     "activation_token": {"DE": "Aktivierungstoken", "EN": "Activation Token"},
     "ctrl_failed_logins": {"DE": "Fehlgeschlagene Loginversuche", "EN": "Failed Logins"},
     "ctrl_locked": {"DE": "Gesperrt", "EN": "Locked"},
-    "ctrl_lockout_time": {"DE": "Sperrzeit", "EN": "Time Lockout"},
+    "ctrl_lockout_time": {"DE": "Sperrzeit", "EN": "Lockout Time"},
     "ctrl_deleted": {"DE": "Gelöscht", "EN": "Deleted"},
     "user_id": {"DE": "Benutzer", "EN": "Username"},
     "eid": {"DE": "Eid", "EN": "Eid"},
