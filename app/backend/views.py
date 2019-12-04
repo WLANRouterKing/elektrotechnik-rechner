@@ -152,7 +152,7 @@ def edit_system_settings():
     """
 
     """
-
+    form = EditAccountForm()
     return render_template("account/edit_account.html", form=form)
 
 
