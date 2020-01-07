@@ -36,12 +36,6 @@ Ein internes [Web-Analytics](https://de.wikipedia.org/wiki/Web_Analytics) zur Au
 Flask wird (hoffentlich) in Zukunft die Unterstützung von [ASGI](https://asgi.readthedocs.io/en/latest/) bereitstellen.
 So können aufwendige Tasks asynchron abgearbeitet werden was die Performance einer Webanwendung enorm steigert.
 
-# Plugins
-
-Dieses CMS wird keine Möglichkeit für sogenannte Plugins bereitstellen.
-Es sind in der Vergangenheit bei anderen CMS Systemen, die dieses Konzept anbieten,
-immer wieder Sicherheitslücken aufgetreten, die genau mit diesem System vermieden werden sollen.
-Wer die Funktionalität dieses Systems erweitern möchte muss das Plugin selbst Programmieren. Die Funktionalität des Remote-Update-Systems wird dadurch nicht beeinträchtigt werden insofern der Programmierer nicht in den Kern der Anwendung eingreift.
 
 
 
