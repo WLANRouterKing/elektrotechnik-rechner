@@ -5,7 +5,7 @@ from flask import render_template, request, flash, redirect, url_for, escape, ab
 from validate_email import validate_email
 from werkzeug.utils import secure_filename
 from app.libs.libs import allowed_file
-from app.models import SystemMail, Session, News, Trash, SystemSettings
+from app.models import SystemMail, Session, News, Trash, SystemSettings, Encryption
 from . import backend
 from .models import BeUser, FailedLoginRecord
 from .forms import LoginForm, EditBeUserForm, EditAccountForm, NewsEditorForm, AddBeUserForm
@@ -42,6 +42,9 @@ def logout():
 
 @backend.route("/login", methods=["GET", "POST"])
 def login():
+    print(Encryption.hash_password("test"))
+    be_user = BeUser()
+    print(be_user.generate_activation_token())
     """
     Login Endpunkt
 
@@ -83,7 +86,7 @@ def login():
                 failed_login_record.set_user_id(be_user.get_id())
                 failed_login_record.set_username(be_user.get_username())
                 failed_login_record.set_ip_address(request.remote_addr)
-                failed_login_record.set_user_agent(request.user_agent)
+                failed_login_record.set_user_agent(str(request.user_agent))
                 failed_login_record.save()
     return render_template("login.html", form=form)
 
@@ -536,7 +539,8 @@ def load_user(user_id):
             session_user.token = session.get_token()
             session_user.timestamp = session.get_timestamp()
             # todo: nur session user übergeben
-            hash = session.get_user_hash_string(session_user.id, session_user.user_agent, session_user.ip_address, session_user.token, session_user.timestamp)
+            hash = session.get_user_hash_string(session_user.id, session_user.user_agent, session_user.ip_address,
+                                                session_user.token, session_user.timestamp)
             if session.is_valid(session.encryption.get_generic_hash(hash)):
                 return session_user
             else:

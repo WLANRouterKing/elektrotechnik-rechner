@@ -22,7 +22,9 @@ def create_app():
     app.config.from_pyfile('config.py')
 
     my_logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s || [%(filename)s:%(lineno)s - %(funcName)20s() ] - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    formatter = logging.Formatter(
+        '%(asctime)s || [%(filename)s:%(lineno)s - %(funcName)20s() ] - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S')
     rotating_file_handler = logging.handlers.RotatingFileHandler(filename='log.debug')
     rotating_file_handler.setFormatter(formatter)
     my_logger.addHandler(rotating_file_handler)
@@ -36,9 +38,9 @@ def create_app():
 
     from .backend import backend as backend_blueprint
     from .frontend import frontend as frontend_blueprint
-    from .api import api as api_blueprint
+    # from .api import api as api_blueprint
     app.register_blueprint(backend_blueprint, url_prefix='/backend/')
     app.register_blueprint(frontend_blueprint, url_prefix='/')
-    app.register_blueprint(api_blueprint, url_prefix='/api/')
+    # app.register_blueprint(api_blueprint, url_prefix='/api/')
 
     return app

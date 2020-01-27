@@ -3,7 +3,6 @@
 from datetime import datetime
 from flask import flash
 from flask_login import UserMixin
-
 from ..models import Database, SystemMail
 
 
@@ -12,6 +11,7 @@ class FailedLoginRecord(Database):
     def __init__(self):
         super().__init__()
         self.item_editable = False
+        self.put_into_trash = False
         self.class_label = "Fehlgeschlagener Loginversuch"
         self.table_name = "failed_login_record"
         self.exclude_from_encryption.pop(1)
@@ -206,20 +206,13 @@ class BeUser(Database):
     def hash_password(self, password):
         return self.encryption.hash_password(password)
 
-    """
-    login validieren
-    erst wird überprüft ob der gegebene benutzername in der datenbank existiert
-    danach wird das passwort geprüft
-    wenn das passwort nicht korrekt ist ctrl_failed_login hochzählen
-    wenn ctrl_failed_login > 3 ist -> account sperren für eine stunde und mail versenden
-    """
-
     def validate_login(self):
         """
-
-
-        Returns:
-
+        login validieren
+        erst wird überprüft ob der gegebene benutzername in der datenbank existiert
+        danach wird das passwort geprüft
+        wenn das passwort nicht korrekt ist ctrl_failed_login hochzählen
+        wenn ctrl_failed_login > 3 ist -> account sperren für eine stunde und mail versenden
         """
         system_mail = SystemMail()
         datetime_now = datetime.now()
@@ -232,6 +225,7 @@ class BeUser(Database):
                 difference = lockout_time.timestamp() - datetime_now.timestamp()
                 if difference > 0:
                     flash("Ihr Account ist gesperrt", 'danger')
+                    # e-mail senden
                 else:
                     self.set_ctrl_locked(0)
                     self.set_ctrl_lockout_time(None)

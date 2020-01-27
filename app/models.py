@@ -1,5 +1,3 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
 import ipaddress
 import datetime
 from re import search
@@ -24,7 +22,7 @@ from .libs.libs import translate_column
 
 class Encryption:
     """
-    Verschlüsselungs Klasse
+    Kryptographie
     """
 
     @staticmethod
@@ -204,22 +202,6 @@ class Encryption:
         return nacl.encoding.Base64Encoder.encode(data)
 
     @staticmethod
-    def get_key_pair():
-        """
-        Generiert ein asynchrones Public/Private KeyPair
-
-        Returns:
-            KeyPair: Das generierte Schlüsselpaar Objekt
-
-        """
-        secret_key = PrivateKey.generate()
-        public_key = secret_key.public_key
-        key_pair = KeyPair()
-        key_pair.set_private_key(secret_key)
-        key_pair.set_public_key(public_key)
-        return key_pair
-
-    @staticmethod
     def get_generic_hash(string):
         hasher = nacl.hash.sha512
         return hasher(bytes(string, encoding="utf-8"), encoder=nacl.encoding.HexEncoder)
@@ -342,6 +324,15 @@ class Database:
     def get_ip_address(self):
         return self.get("ip_address")
 
+    def get_headline(self):
+        return self.get("headline")
+
+    def get_ctrl_show(self):
+        return self.get("ctrl_show")
+
+    def set_headline(self, value):
+        self.set("headline", value)
+
     def set_id(self, value):
         self.set("id", value)
 
@@ -363,14 +354,17 @@ class Database:
     def set_ctrl_deleted(self, value):
         self.set("ctrl_deleted", value)
 
+    def set_ctrl_active(self, value):
+        self.set("ctrl_active", value)
+
+    def set_ctrl_show(self, value):
+        self.set("ctrl_show", value)
+
     def set_ip_address(self, value):
         self.set("ip_address", value)
 
     def set_user_agent(self, value):
         self.set("user_agent", value)
-
-    def set_ctrl_active(self, value):
-        self.set("ctrl_active", value)
 
     def is_ip_address(self, value):
         try:
@@ -554,9 +548,11 @@ class Database:
                 success = True
 
             if rowcount > 0 and self.item_editable:
-                flash("{0} mit der ID {1} wurde erfolgreich aktualisiert {2}".format(self.class_label, self.get_id(), self.table_name), "success")
+                flash("{0} mit der ID {1} wurde erfolgreich aktualisiert {2}".format(self.class_label, self.get_id(),
+                                                                                     self.table_name), "success")
             elif rowcount <= 0 and self.item_editable:
-                flash("{0} mit der ID {1} konnte nicht aktualisiert werden {2}".format(self.class_label, self.get_id(), self.table_name), "success")
+                flash("{0} mit der ID {1} konnte nicht aktualisiert werden {2}".format(self.class_label, self.get_id(),
+                                                                                       self.table_name), "success")
 
         except Exception as error:
             my_logger.log(10, error)
@@ -597,9 +593,11 @@ class Database:
                 success = row
 
             if row > 0 and self.item_editable:
-                flash("{0} mit der ID {1} wurde erfolgreich erstellt".format(self.class_label, self.get_id()), "success")
+                flash("{0} mit der ID {1} wurde erfolgreich erstellt".format(self.class_label, self.get_id()),
+                      "success")
             elif row <= 0 and self.item_editable:
-                flash("{0} mit der ID {1} konnte nicht erstellt werden".format(self.class_label, self.get_id()), "success")
+                flash("{0} mit der ID {1} konnte nicht erstellt werden".format(self.class_label, self.get_id()),
+                      "success")
 
         except Exception as error:
             my_logger.log(10, error)
@@ -633,9 +631,11 @@ class Database:
                     trash.set("item_table", table)
                     trash.set("user_id", current_user.get_id())
                     if trash.save():
-                        flash("""{0} mit der ID {1} erfolgreich in den Papierkorb verschoben""".format(self.class_label, id), "success")
+                        flash("""{0} mit der ID {1} erfolgreich in den Papierkorb verschoben""".format(self.class_label,
+                                                                                                       id), "success")
                     else:
-                        flash("""{0} mit der ID {1} konnte nicht in den Papierkorb verschoben werden""".format(self.class_label, id), "danger")
+                        flash("""{0} mit der ID {1} konnte nicht in den Papierkorb verschoben werden""".format(
+                            self.class_label, id), "danger")
                 else:
                     sql = """DELETE FROM {0} WHERE id = %s;""".format(table)
                 cursor.execute(sql, [id])
@@ -645,7 +645,8 @@ class Database:
                     if row > 0 and not self.put_into_trash:
                         flash("""{0} mit der ID {1} erfolgreich gelöscht""".format(self.class_label, id), "success")
                     elif row <= 0 and not self.put_into_trash:
-                        flash("""{0} mit der ID {1} konnte nicht gelöscht werden""".format(self.class_label, id), "danger")
+                        flash("""{0} mit der ID {1} konnte nicht gelöscht werden""".format(self.class_label, id),
+                              "danger")
 
                 if row > 0:
                     success = True
@@ -723,12 +724,14 @@ class Database:
                 if self.item_editable:
                     html += '<td class="edit">'
                     url = "backend." + self.edit_node
-                    html += '<a href="' + url_for(url, id=item.get_id()) + '" class="oi oi-pencil" title="' + self.class_label + ' bearbeiten" aria-hidden="true"></a>'
+                    html += '<a href="' + url_for(url,
+                                                  id=item.get_id()) + '" class="oi oi-pencil" title="' + self.class_label + ' bearbeiten" aria-hidden="true"></a>'
                     html += '</td>'
                 if self.put_into_trash:
                     html += '<td class="remove">'
                     url = "backend." + self.delete_node
-                    html += '<a href="' + url_for(url, id=item.get_id()) + '" class="oi oi-trash" title="' + self.class_label + ' löschen" aria-hidden="true"></a>'
+                    html += '<a href="' + url_for(url,
+                                                  id=item.get_id()) + '" class="oi oi-trash" title="' + self.class_label + ' löschen" aria-hidden="true"></a>'
                     html += '</td>'
             html += '</tr>'
 
@@ -896,7 +899,8 @@ class Session(Database):
             if sodium_memcmp(hash_session, user_hash):
                 my_logger.log(10, """Session mit der User ID {0} ist valid""".format(self.get_user_id()))
                 return True
-        my_logger.log(10, """Session abgelaufen. User mit der ID {0} muss ausgeloggt werden.""".format(self.get_user_id()))
+        my_logger.log(10,
+                      """Session abgelaufen. User mit der ID {0} muss ausgeloggt werden.""".format(self.get_user_id()))
         return False
 
 
@@ -952,11 +956,14 @@ class SystemMail(Database):
         username = be_user.get("username")
         email = be_user.get("email")
         activation_token = be_user.get("activation_token")
-        link = current_app.config["HOST"] + ":" + str(current_app.config["HOST_PORT"]) + url_for("backend.be_user_activate", user_id=be_user.get_id(), activation_token=activation_token)
+        link = current_app.config["HOST"] + ":" + str(current_app.config["HOST_PORT"]) + url_for(
+            "backend.be_user_activate", user_id=be_user.get_id(), activation_token=activation_token)
         self.set_subject("Du wurdest hinzugefügt")
         self.add_line("""<h2>Hallo {0}</h2></br></br>""".format(username))
         self.add_line("""<p>Du wurdest zum Cryption Backend hinzugefügt<p></br>""")
-        self.add_line("""<p>Bitte aktiviere deinen Account über folgenden Link: <a href="{0}{1}">Account aktivieren</a><p></br>""".format(host_protocol, link))
+        self.add_line(
+            """<p>Bitte aktiviere deinen Account über folgenden Link: <a href="{0}{1}">Account aktivieren</a><p></br>""".format(
+                host_protocol, link))
         self.set_receiver(email)
         self.send_message()
 
@@ -1119,3 +1126,121 @@ class Page(Database):
     def __init__(self):
         super().__init__()
         self.table_name = "page"
+        self.class_label = "Seite"
+        self.edit_node = "edit_" + self.table_name
+        self.delete_node = "delete_" + self.table_name
+
+    def get_label(self):
+        return self.get("label")
+
+    def get_parent_id(self):
+        return self.get("parent_id")
+
+    def get_intro_text(self):
+        return self.get("introtext")
+
+    def get_teaser_text(self):
+        return self.get("teasertext")
+
+    def get_slider_images(self):
+        return self.get("slider_images")
+
+    def get_head_image(self):
+        return self.get("head_image")
+
+    def get_teaser_image(self):
+        return self.get("teaser_image")
+
+    def get_meta_title(self):
+        return self.get("meta_title")
+
+    def get_meta_image(self):
+        return self.get("meta_image")
+
+    def get_meta_description(self):
+        return self.get("meta_description")
+
+    def get_ctrl_template(self):
+        return self.get("ctrl_template")
+
+    def get_ctrl_navigation(self):
+        return self.get("ctrl_navigation")
+
+    def get_ctrl_edit(self):
+        return self.get("ctrl_edit")
+
+    def get_ctrl_sort(self):
+        return self.get("ctrl_sort")
+
+    def get_ctrl_delete(self):
+        return self.get("ctrl_delete")
+
+    def get_ctrl_start(self):
+        return self.get("ctrl_start")
+
+    def set_label(self, value):
+        self.set("label", value)
+
+    def set_parent_id(self, value):
+        self.set("parent_id", value)
+
+    def set_intro_text(self, value):
+        self.set("introtext", value)
+
+    def set_teaser_text(self, value):
+        self.set("teasertext", value)
+
+    def set_slider_images(self, value):
+        self.set("slider_images", value)
+
+    def set_head_image(self, value):
+        self.set("head_image", value)
+
+    def set_teaser_image(self, value):
+        self.set("teaser_image", value)
+
+    def set_meta_title(self, value):
+        self.set("meta_title", value)
+
+    def set_meta_image(self, value):
+        self.set("meta_image", value)
+
+    def set_meta_description(self, value):
+        self.set("meta_description", value)
+
+    def set_ctrl_template(self, value):
+        self.set("ctrl_template", value)
+
+    def set_ctrl_navigation(self, value):
+        self.set("ctrl_navigation", value)
+
+    def set_ctrl_edit(self, value):
+        self.set("ctrl_edit", value)
+
+    def set_ctrl_sort(self, value):
+        self.set("ctrl_sort", value)
+
+    def set_ctrl_delete(self, value):
+        self.set("ctrl_delete", value)
+
+    def set_ctrl_start(self, value):
+        self.set("ctrl_start", value)
+
+    def get_page_title(self):
+        title = self.get_title()
+        if title == "":
+            title = self.get_label()
+        return title
+
+    def prepare_eid(self):
+        if self.get_custom_eid() == "":
+            eid = self.get_label()
+        else:
+            eid = self.get_custom_eid()
+        eid = str(eid).lower()
+        # leerzeichen und sonderzeichen ersetzen
+        self.set_eid(eid)
+
+    def save(self):
+        self.prepare_eid()
+        super().save()
