@@ -12,7 +12,6 @@ import nacl.signing
 import nacl.hash
 from nacl import encoding
 from nacl.bindings import sodium_memcmp
-from nacl.public import PrivateKey
 from flask_login import current_user
 from app import Mail
 from flask_mail import Message
@@ -232,7 +231,8 @@ class Database:
         self.put_into_trash = True
         self.exclude_from_encryption = ["id", "password", "username", "user_id", "ctrl"]
         self.column_admin_rights = ["ctrl_access_level"]
-        self.filter_from_form_prepare = ["csrf_token", "type", "module", "user_password", "submit", "password2"]
+        self.filter_from_form_prepare = ["csrf_token", "type", "module", "user_password", "submit", "password2",
+                                         "image-format"]
 
     def get(self, key):
         """
@@ -691,8 +691,36 @@ class Database:
             my_logger.log(10, error)
         finally:
             self.close_connection(cursor)
-
         return self.list
+
+    def get_id_label_list(self):
+        """
+        Liefert eine Id List anhand des Tabellennamens
+
+        Args:
+            sql_where: Optional - Ein SQL-Where Statement zum filtern der Liste
+
+        Returns:
+            list: Die Id Liste
+
+        """
+        connection = self.get_connection()
+        cursor = connection.cursor(prepared=True)
+        id_label_list = [(0, 'Nichts ausgewählt')]
+        try:
+            table = self.table_name
+            sql = """SELECT id,label FROM {0}""".format(table)
+            if self.put_into_trash:
+                sql += " WHERE ctrl_deleted = 0 "
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+            for row in rows:
+                id_label_list.append(row)
+        except Exception as error:
+            my_logger.log(10, error)
+        finally:
+            self.close_connection(cursor)
+        return id_label_list
 
     def object_list(self, object=None, sql_where=""):
         list_id = self.id_list(sql_where)
@@ -709,7 +737,8 @@ class Database:
         html = '<table class="table table-striped table-dark col-lg-12 ">'
         html += '<thead>'
         for column in columns:
-            html += '<th scope="col">' + translate_column(column) + '</th>'
+            if not search('ctrl_', column):
+                html += '<th scope="col">' + translate_column(column) + '</th>'
         html += '</thead>'
         for item in self.object_list(object):
             html += '<tr>'
@@ -718,9 +747,10 @@ class Database:
                 if key == 'id' or search('_id', key):
                     html += '<th scope="row">' + str(item.get(key)) + '</th>'
                 else:
-                    html += '<td>' + str(item.get(key)) + '</td>'
+                    if not search('ctrl_', key):
+                        html += '<td>' + str(item.get(key)) + '</td>'
 
-            if current_user.is_admin:
+            if current_user.is_admin or current_user.is_moderator:
                 if self.item_editable:
                     html += '<td class="edit">'
                     url = "backend." + self.edit_node
@@ -787,13 +817,20 @@ class Database:
         return True
 
     def create_instance_by(self, key="username"):
+        """
+
+        Args:
+            key (string):
+
+        Returns:
+            self|bool
+
+        """
         connection = self.get_connection()
         cursor = connection.cursor(prepared=True)
         rows = None
         try:
             value = self.get(key)
-            if value == "":
-                return False
             table = self.table_name
             sql = """SELECT id FROM {0} WHERE {1} = %s""".format(table, key)
             cursor.execute(sql, [value])
@@ -802,7 +839,6 @@ class Database:
             my_logger.log(10, error)
         finally:
             self.close_connection(cursor)
-
         if rows is not None:
             id = rows[0]
             if id > 0:
@@ -883,8 +919,17 @@ class Session(Database):
         ip_address = self.get_ip_address()
         return "{0}{1}{2}{3}{4}".format(token, timestamp, user_id, user_agent, ip_address)
 
-    def get_user_hash_string(self, user_id, user_agent, ip_address, token, timestamp):
-        return "{0}{1}{2}{3}{4}".format(token, timestamp, user_id, user_agent, ip_address)
+    def get_user_hash_string(self, session_user):
+        """
+
+        Args:
+            session_user (SessionUser):
+
+        Returns:
+
+        """
+        return "{0}{1}{2}{3}{4}".format(session_user.get_token(), session_user.timestamp, session_user.id,
+                                        session_user.user_agent, session_user.ip_address)
 
     def is_valid(self, user_hash):
         datetime_now = datetime.datetime.now()
@@ -1227,12 +1272,22 @@ class Page(Database):
         self.set("ctrl_start", value)
 
     def get_page_title(self):
+        """
+
+        Returns:
+
+        """
         title = self.get_title()
         if title == "":
             title = self.get_label()
         return title
 
     def prepare_eid(self):
+        """
+
+        Returns:
+
+        """
         if self.get_custom_eid() == "":
             eid = self.get_label()
         else:
@@ -1242,5 +1297,143 @@ class Page(Database):
         self.set_eid(eid)
 
     def save(self):
+        """
+
+        Returns:
+
+        """
+        if self.get_parent_id() == "":
+            self.set_parent_id(0)
         self.prepare_eid()
         super().save()
+
+    def get_top_level_pages(self):
+        """
+        Liefert die Top-Level Seiten
+
+        Returns:
+            list: Die Id Liste
+
+        """
+        connection = self.get_connection()
+        cursor = connection.cursor(prepared=True)
+        id_label_list = []
+        try:
+            table = self.table_name
+            sql = """SELECT id FROM {0} WHERE parent_id = 0 AND ctrl_deleted = 0""".format(table)
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+            for row in rows:
+                id_label_list.append(row)
+        except Exception as error:
+            my_logger.log(10, error)
+        finally:
+            self.close_connection(cursor)
+        return id_label_list
+
+    def get_child_pages(self, id=0):
+        """
+        Liefert die Unterseiten für eine Top-Level Seite
+
+        Returns:
+            list: Die IDs der Unterseiten
+
+        """
+        connection = self.get_connection()
+        cursor = connection.cursor(prepared=True)
+        table = self.table_name
+        result = list()
+
+        if id > 0:
+            sql = """SELECT id FROM {0} WHERE parent_id = %s AND ctrl_deleted = 0""".format(table)
+            try:
+                cursor.execute(sql, [id])
+                for row in cursor:
+                    result.append(row)
+            except Exception as error:
+                my_logger.log(10, error)
+            finally:
+                self.close_connection(cursor)
+        return result
+
+    def is_sub_page(self, id=0):
+        """
+
+        Args:
+            id ():
+
+        Returns:
+
+        """
+        if id > 0:
+            connection = self.get_connection()
+            cursor = connection.cursor(prepared=True)
+            table = self.table_name
+
+            if id > 0:
+                sql = """SELECT id FROM {0} WHERE parent_id = %s AND ctrl_deleted = 0""".format(table)
+                try:
+                    cursor.execute(sql, [id])
+                    rows = cursor.fetchall()
+                    if len(rows) > 0:
+                        return True
+                except Exception as error:
+                    my_logger.log(10, error)
+                finally:
+                    self.close_connection(cursor)
+            return False
+
+    def get_page_tree(self):
+        """
+        Liefert den Seitenbaum für die Übersicht
+
+        Returns:
+            string: Den Seitenbaum als HTML
+        """
+        pages = self.get_top_level_pages()
+        url = "backend." + self.edit_node
+        html = '<ul class="page-tree sortable">'
+
+        for page in pages:
+
+            id = page[0]
+
+            if int(id) <= 0:
+                continue
+
+            page = Page()
+            page.set_id(id)
+            page.load()
+            html += '<li class="page-item">'
+            html += '<a href="' + url_for(url, id=page.get_id()) + '" class="page-link" attr-id="' + str(
+                page.get_id()) + '">' + page.get_label() + '</a>'
+            if current_user.is_admin or current_user.is_moderator:
+                if self.item_editable:
+                    html += '<span class="edit">'
+                    url = "backend." + self.edit_node
+                    html += '<a href="' + url_for(url,
+                                                  id=page.get_id()) + '" class="oi oi-pencil" title="' + self.class_label + ' bearbeiten" aria-hidden="true"></a>'
+                    html += '</span>'
+                if self.put_into_trash:
+                    html += '<span class="remove">'
+                    url = "backend." + self.delete_node
+                    html += '<a href="' + url_for(url,
+                                                  id=page.get_id()) + '" class="oi oi-trash" title="' + self.class_label + ' löschen" aria-hidden="true"></a>'
+                    html += '</span>'
+            sub_page_ids = self.get_child_pages(id=page.get_id())
+
+            if len(sub_page_ids) > 0:
+                html += '<ul class="page-tree sub-page-tree">'
+                for sub_page_id in sub_page_ids:
+                    html += '<li class="page-item second-level">'
+                    sub_page = Page()
+                    sub_page.set_id(sub_page_id[0])
+                    sub_page.load()
+                    html += '<a href="' + url_for(url, id=sub_page.get_id()) + '" class="page-link" attr-id="' + str(
+                        sub_page.get_id()) + '">' + sub_page.get_label() + '</a>'
+                    html += '</li>'
+                html += '</ul>'
+            html += '</a>'
+            html += '</li>'
+        html += '</ul>'
+        return html

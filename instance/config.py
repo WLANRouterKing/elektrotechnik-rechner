@@ -7,10 +7,10 @@ MAIL_ADMIN = ""
 ############################################################################
 # mysql connector
 ############################################################################
-DATABASE_HOST = ""
-DATABASE_NAME = ""
-DATABASE_USER = ""
-DATABASE_PASSWORD = ""
+DATABASE_HOST = "127.0.0.1"
+DATABASE_NAME = "cryption_cms"
+DATABASE_USER = "phpmyadmin"
+DATABASE_PASSWORD = "root"
 ############################################################################
 # System Verschlüsselung e.g: 5a440e89215ccb7680db99ad24e02fb38cf5d288b8363c446b15d0d6e2375eb1
 ############################################################################

@@ -7,6 +7,7 @@ from flask import session, flash, current_app, url_for
 from flask_wtf import FlaskForm
 from markupsafe import iteritems
 from wtforms.csrf.session import SessionCSRF
+from app.page_element_config import PAGE_ELEMENTS
 
 
 class CustomForm(FlaskForm):
@@ -54,10 +55,8 @@ class CustomForm(FlaskForm):
     @property
     def action(self):
         page = "{0}.{1}".format(self.blueprint_name, self.page)
-        print(self.id)
         if int(self.id) > 0:
             return url_for(page, id=self.id)
-        print(page)
         return url_for(page)
 
     def get_all_elements(self):
@@ -133,7 +132,6 @@ class CustomForm(FlaskForm):
         return html
 
     def get_element_html(self, element):
-        print(element)
         html = "<div class='form-group'>"
         element_type = getattr(element.widget, 'type', None)
         element_input_type = getattr(element.widget, 'input_type', None)
@@ -190,6 +188,16 @@ class CustomForm(FlaskForm):
         html += "</div>"
         return html
 
+    def get_page_element_overview_html(self):
+        html = '<a class="btn-dark button button-add-page-element">Seitenelement hinzufügen</a>'
+        html += '<h3>Seitenelemente: </h3>'
+        html += '<div id="page-elements"></div>'
+        html += '<div id="page-element-overview-dialog" class="page-element-overview dialog hidden">'
+        for element_eid in PAGE_ELEMENTS:
+            html += '<div class="page-element-item" eid="' + element_eid + '">' + element_eid + '</div>'
+        html += '</div>'
+        return html
+
     def render(self, form_object=None):
         submit = ""
         html = ""
@@ -206,10 +214,13 @@ class CustomForm(FlaskForm):
             for tab in self.tabs:
                 html_tab = dict()
                 html_tab[tab] = ""
+                html_tab[
+                    tab] += '<a class="btn-dark button button-display-tab-content" data-tab="' + tab + '"><span class="oi oi-arrow-thick-top"></span>Inhalt ausblenden</a>'
                 for field in iter(self):
                     element = field
                     element_id = element.label.field_id
-                    if tab == "content" and not self.is_element_seo(element_id) and not self.is_element_control(element_id) and not self.is_element_submit(element_id):
+                    if tab == "content" and not self.is_element_seo(element_id) and not self.is_element_control(
+                            element_id) and not self.is_element_submit(element_id):
                         html_tab[tab] += self.get_element_html(element)
                     elif tab == "meta" and self.is_element_seo(element_id):
                         html_tab[tab] += self.get_element_html(element)
@@ -217,6 +228,10 @@ class CustomForm(FlaskForm):
                         html_tab[tab] += self.get_element_html(element)
                     elif self.is_element_submit(element_id):
                         submit = self.get_element_html(element)
+
+                if tab == "content" and self.module == "pages":
+                    html_tab[tab] += self.get_page_element_overview_html()
+
                 html += '<div id="tab-{0}" data-tab-id="{1}" class="tab container-fluid">'.format(tab, tab)
                 html += html_tab[tab]
                 html += "</div>"

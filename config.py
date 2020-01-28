@@ -28,5 +28,23 @@ IMAGE_FORMATS = {
             "width": "1920",
             "height": "0"
         }
+    },
+    "pages": {
+        "slider_images": {
+            "width": "1920",
+            "height": "0"
+        },
+        "head_image": {
+            "width": "1920",
+            "height": "0"
+        },
+        "teaser_image": {
+            "width": "480",
+            "height": "480"
+        },
+        "meta_image": {
+            "width": "1920",
+            "height": "0"
+        }
     }
 }

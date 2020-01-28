@@ -1,0 +1,13 @@
+{% extends "dashboard.html" %}
+
+{% block editor %}
+    <div class="col-lg-4">
+        {% if form %}
+            {% if form_object %}
+                {{ form_helper.render_form(form,form_object) }}
+            {% else %}
+                {{ form_helper.render_form(form) }}
+            {% endif %}
+        {% endif %}
+    </div>
+{% endblock %}

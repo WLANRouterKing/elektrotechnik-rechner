@@ -5,10 +5,10 @@ from flask import render_template, request, flash, redirect, url_for, escape, ab
 from validate_email import validate_email
 from werkzeug.utils import secure_filename
 from app.libs.libs import allowed_file
-from app.models import SystemMail, Session, News, Trash, SystemSettings, Encryption
+from app.models import SystemMail, Session, News, Trash, SystemSettings, Encryption, Page
 from . import backend
 from .models import BeUser, FailedLoginRecord
-from .forms import LoginForm, EditBeUserForm, EditAccountForm, NewsEditorForm, AddBeUserForm
+from .forms import LoginForm, EditBeUserForm, EditAccountForm, NewsEditorForm, AddBeUserForm, PageEditorForm
 from flask_login import login_user, current_user, login_required, logout_user
 from app import login_manager, my_logger
 from .nav import create_nav
@@ -42,9 +42,6 @@ def logout():
 
 @backend.route("/login", methods=["GET", "POST"])
 def login():
-    print(Encryption.hash_password("test"))
-    be_user = BeUser()
-    print(be_user.generate_activation_token())
     """
     Login Endpunkt
 
@@ -465,6 +462,85 @@ def delete_news(id):
 
 
 ############################################################################
+# Pages
+############################################################################
+
+@backend.route("/content/pages", methods=["GET"])
+@login_required
+def pages():
+    """
+
+    Returns:
+
+    """
+    return render_template("content/pages/pages.html", pages=Page())
+
+
+@backend.route("/content/pages/add_page/", methods=["GET"])
+@login_required
+def add_page():
+    """
+
+    Returns:
+
+    """
+
+    form = PageEditorForm()
+    page = Page()
+    page.init_default()
+    page.save()
+
+    return render_template("content/pages/add_page.html", form=form, form_object=page)
+
+
+@backend.route("/content/pages/edit_page/<int:id>", methods=["GET", "POST"])
+@login_required
+def edit_page(id):
+    """
+
+    Returns:
+
+    """
+    form = PageEditorForm()
+    form.id = id
+    page = Page()
+    form.parent_id.choices = page.get_id_label_list()
+
+    if id > 0:
+        page.set_id(id)
+        page.load()
+
+    if request.method == "GET":
+        form.init_values(page)
+
+    if request.method == "POST":
+        if form.validate_on_submit():
+            page.prepare_form_input(request.form)
+            page.save()
+        else:
+            form.get_error_messages()
+    return render_template("content/pages/edit_page.html", form=form)
+
+
+@backend.route("/content/pages/delete_page/<int:id>", methods=["GET"])
+@login_required
+def delete_page(id):
+    """
+
+    Returns:
+
+    """
+
+    if id > 0:
+        page = Page()
+        page.set_id(id)
+        page.load()
+        page.delete()
+
+    return redirect(url_for("backend.pages"))
+
+
+############################################################################
 # Unauthorized Handler
 ############################################################################
 
@@ -538,9 +614,7 @@ def load_user(user_id):
             session_user.user_agent = request.user_agent
             session_user.token = session.get_token()
             session_user.timestamp = session.get_timestamp()
-            # todo: nur session user übergeben
-            hash = session.get_user_hash_string(session_user.id, session_user.user_agent, session_user.ip_address,
-                                                session_user.token, session_user.timestamp)
+            hash = session.get_user_hash_string(session_user)
             if session.is_valid(session.encryption.get_generic_hash(hash)):
                 return session_user
             else:

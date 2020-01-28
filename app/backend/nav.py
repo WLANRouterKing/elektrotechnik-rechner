@@ -7,6 +7,10 @@ def create_nav():
     nav.Bar('main', [
         nav.Item('Dashboard', 'backend.dashboard'),
         nav.Item('Inhalte', 'backend.dashboard', items=[
+            nav.Item("Seiten", 'backend.pages', items=[
+                nav.Item("Seiten Übersicht", 'backend.pages'),
+                nav.Item("Seite erstellen", 'backend.add_page')
+            ]),
             nav.Item("News", 'backend.news', items=[
                 nav.Item("News Übersicht", 'backend.news'),
                 nav.Item("News Meldung erstellen", 'backend.add_news')
@@ -34,4 +38,5 @@ def create_nav():
         ]))
 
     # navigationspunkt account
-    navbar_main_items.append(nav.Item('Account', '', items=[nav.Item("Account bearbeiten", 'backend.account_edit'), nav.Item('Logout', 'backend.logout')]))
+    navbar_main_items.append(nav.Item('Account', '', items=[nav.Item("Account bearbeiten", 'backend.account_edit'),
+                                                            nav.Item('Logout', 'backend.logout')]))

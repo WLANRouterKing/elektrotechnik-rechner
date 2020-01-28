@@ -1,0 +1,13 @@
+{% extends "dashboard.html" %}
+
+{% block editor %}
+    <div class="col-lg-4">
+        {% if form %}
+            {{ form_helper.render_form(form) }}
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block footer_script_end %}
+    <script src="{{ url_for('backend.static', filename='js/pages.js') }}"></script>
+{% endblock %}

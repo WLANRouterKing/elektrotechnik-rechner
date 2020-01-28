@@ -1,0 +1,7 @@
+{% extends "dashboard.html" %}
+
+{% block editor %}
+    {% if pages %}
+        {{ pages.get_page_tree()|safe }}
+    {% endif %}
+{% endblock %}
