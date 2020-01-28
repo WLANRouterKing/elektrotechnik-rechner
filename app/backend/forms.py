@@ -123,7 +123,7 @@ class PageEditorForm(CustomForm):
     page = Page()
     id = HiddenField()
     label = StringField("Label")
-    eid = StringField("EID")
+    eid = HiddenField("EID")
     parent_id = SelectField("Elternseite", coerce=int)
     custom_eid = StringField("Custom EID")
     title = StringField("Seitentitel")

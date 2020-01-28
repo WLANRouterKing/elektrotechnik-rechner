@@ -6,15 +6,15 @@
     <title>Cryption Backend</title>
     <meta name="robots" contend="noindex,nofollow">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="stylesheet" href="{{ url_for('backend.static', filename='css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('backend.static', filename='css/open-iconic-bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('backend.static', filename='css/jquery-ui.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('backend.static', filename='webfonts.css') }}">
-    <link rel="stylesheet" href="{{ url_for('backend.static', filename='css/basic.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('backend.static', filename='css/dropzone.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('backend.static', filename='css/main.css') }}">
-    <script src="{{ url_for('backend.static', filename='js/jquery.min.js') }}"></script>
-    <script src="{{ url_for('backend.static', filename='js/jquery-ui.min.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/open-iconic-bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/webfonts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/basic.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dropzone.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/backend.css') }}">
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jquery-ui.min.js') }}"></script>
     {% block stylesheets %}
     {% endblock %}
 </head>
@@ -102,14 +102,14 @@
     </div>
 {% endblock %}
 
-<script src="{{ url_for('backend.static', filename='js/bootstrap.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
 
 {% block footer_script_start %}
 {% endblock %}
 
-<script src="{{ url_for('backend.static', filename='js/dropzone.min.js') }}"></script>
-<script src="{{ url_for('backend.static', filename='js/ckeditor.js') }}"></script>
-<script src="{{ url_for('backend.static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dropzone.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ckeditor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
 {% block footer_script_end %}
 {% endblock %}

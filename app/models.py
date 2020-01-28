@@ -1179,7 +1179,7 @@ class Page(Database):
         return self.get("label")
 
     def get_parent_id(self):
-        return self.get("parent_id")
+        return int(self.get("parent_id"))
 
     def get_intro_text(self):
         return self.get("introtext")
@@ -1222,6 +1222,9 @@ class Page(Database):
 
     def get_ctrl_start(self):
         return self.get("ctrl_start")
+
+    def get_ctrl_index(self):
+        return self.get("ctrl_index")
 
     def set_label(self, value):
         self.set("label", value)
@@ -1271,6 +1274,9 @@ class Page(Database):
     def set_ctrl_start(self, value):
         self.set("ctrl_start", value)
 
+    def set_ctrl_index(self, value):
+        self.set("ctrl_index", value)
+
     def get_page_title(self):
         """
 
@@ -1288,13 +1294,50 @@ class Page(Database):
         Returns:
 
         """
-        if self.get_custom_eid() == "":
-            eid = self.get_label()
-        else:
+
+        eid = self.get_label()
+        if self.get_custom_eid() != "":
             eid = self.get_custom_eid()
+
         eid = str(eid).lower()
         # leerzeichen und sonderzeichen ersetzen
+        eid = eid.replace("/", "_")
+        eid = eid.replace(",", "_")
+        eid = eid.replace(":", "_")
+        eid = eid.replace("?", "")
+        eid = eid.replace(" ", "_")
+        if self.get_parent_id() > 0:
+            parent_page = Page()
+            parent_page.set_id(self.get_parent_id())
+            parent_page.load()
+            eid = parent_page.get_eid() + "/" + eid
         self.set_eid(eid)
+
+    def get_start_page(self):
+        """
+        Liefert die Startseite
+
+        Returns:
+
+
+        """
+        connection = self.get_connection()
+        cursor = connection.cursor(prepared=True)
+        page = None
+        try:
+            table = self.table_name
+            sql = """SELECT id FROM {0} WHERE parent_id = 0 AND ctrl_deleted = 0 AND ctrl_start = 1""".format(table)
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+            for row in rows:
+                page = Page()
+                page.set_id(row[0])
+                page.load()
+        except Exception as error:
+            my_logger.log(10, error)
+        finally:
+            self.close_connection(cursor)
+        return page
 
     def save(self):
         """

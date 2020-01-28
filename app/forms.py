@@ -16,7 +16,7 @@ class CustomForm(FlaskForm):
         super().__init__()
         self.id = 0
         self.display_tabs = True
-        self.filter_label = ["csrf_token", "submit", "Id"]
+        self.filter_label = ["csrf_token", "submit", "Id", "EID"]
         self.tabs = ["content", "meta", "ctrl"]
         self.method = "post"
         self.type = None

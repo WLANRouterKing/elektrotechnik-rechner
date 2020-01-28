@@ -3,7 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ page.get_title() }}</title>
-
+    <meta name="description" content="{{ page.get_meta_description() }}">
+    {% if page.get_ctrl_index() %}
+        <meta name="robots" content="index,follow">
+    {% else %}
+        <meta name="robots" content="noindex,nofollow">
+    {% endif %}
+    <meta http-equiv="expires" content="3600"/>
+    <meta property="og:image" content="{{ page.get_meta_image() }}">
+    <meta property="og:title" content="{{ page.get_title() }}">
+    <meta property="og:description" content="{{ page.get_meta_description() }}">
+    <meta property="og:type" content="Website">
+    <meta property="og:site_name" content="Cryption CMS">
+    <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='favicon/apple-icon-57x57.png') }}">
+    <link rel="apple-touch-icon" sizes="60x60" href="{{ url_for('static', filename='favicon/apple-icon-60x60.png') }}">
+    <link rel="apple-touch-icon" sizes="72x72" href="{{ url_for('static', filename='favicon/apple-icon-72x72.png') }}">
+    <link rel="apple-touch-icon" sizes="76x76" href="{{ url_for('static', filename='favicon/apple-icon-76x76.png') }}">
+    <link rel="apple-touch-icon" sizes="114x114" href="{{ url_for('static', filename='favicon/apple-icon-114x114.png') }}">
+    <link rel="apple-touch-icon" sizes="120x120" href="{{ url_for('static', filename='favicon/apple-icon-120x120.png') }}">
+    <link rel="apple-touch-icon" sizes="144x144" href="{{ url_for('static', filename='favicon/apple-icon-144x144.png') }}">
+    <link rel="apple-touch-icon" sizes="152x152" href="{{ url_for('static', filename='favicon/apple-icon-152x152.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-icon-180x180.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='favicon/android-icon-192x192.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="96x96" href="{{ url_for('static', filename='favicon/favicon-96x96.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='favicon/manifest.json') }}">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='favicon/ms-icon-144x144.png') }}">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reset.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/1024px.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/768px.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/480px.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/320px.css') }}">
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
 </head>
 <body>
 <div class="navbar navbar-expand-lg navbar-dark bg-dark">
